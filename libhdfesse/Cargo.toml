@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 protobuf = { version = "2", features = ["with-bytes"] }
+thiserror = "1.0"
 
 [build-dependencies]
 protoc-rust = "2.0"

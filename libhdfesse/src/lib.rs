@@ -14,6 +14,7 @@
    limitations under the License.
 */
 mod proto;
+pub mod rpc;
 
 #[cfg(test)]
 mod tests {
