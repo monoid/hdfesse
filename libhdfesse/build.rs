@@ -1,9 +1,7 @@
 extern crate protoc_rust;
 
 fn main() {
-    protoc_rust::Codegen::new()
-        .out_dir("src/proto")
-        .inputs(&[
+    let files = &[
             "protobuf/acl.proto",
             "protobuf/ClientNamenodeProtocol.proto",
             "protobuf/datatransfer.proto",
@@ -15,7 +13,13 @@ fn main() {
             "protobuf/RpcHeader.proto",
             "protobuf/Security.proto",
             "protobuf/xattr.proto",
-        ])
+    ];
+    for file in files {
+        println!("cargo:rerun-if-changed={}", file);
+    }
+    protoc_rust::Codegen::new()
+        .out_dir("src/proto")
+        .inputs(files)
         .include("protobuf")
         .run()
         .expect("protoc");
