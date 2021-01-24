@@ -18,7 +18,7 @@ fn main() {
         println!("cargo:rerun-if-changed={}", file);
     }
     protoc_rust::Codegen::new()
-        .out_dir("src/proto")
+        .out_dir("src")
         .inputs(files)
         .include("protobuf")
         .run()

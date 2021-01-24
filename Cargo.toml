@@ -1,7 +1,6 @@
 [workspace]
 
 members = [
-   # "hdfesse",
+   "hdfesse_proto",
    "libhdfesse",
-   # "libhdfs",
 ]

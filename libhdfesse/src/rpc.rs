@@ -20,9 +20,9 @@ use std::{borrow::Cow, fmt::Debug};
 
 use thiserror::Error;
 
-use crate::proto::IpcConnectionContext::*;
-use crate::proto::ProtobufRpcEngine::RequestHeaderProto;
-use crate::proto::RpcHeader::*;
+use hdfesse_proto::IpcConnectionContext::*;
+use hdfesse_proto::ProtobufRpcEngine::RequestHeaderProto;
+use hdfesse_proto::RpcHeader::*;
 use protobuf::{CodedInputStream, CodedOutputStream, Message};
 
 const RPC_HEADER: &[u8; 4] = b"hrpc";
