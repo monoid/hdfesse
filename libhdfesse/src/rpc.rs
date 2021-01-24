@@ -13,19 +13,21 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-use std::fmt::Debug;
-use std::io::{self, Write};
+use std::io::{self, Read, Write};
 use std::net::TcpStream;
 use std::net::ToSocketAddrs;
+use std::{borrow::Cow, fmt::Debug};
 
 use thiserror::Error;
 
 use crate::proto::IpcConnectionContext::*;
+use crate::proto::ProtobufRpcEngine::RequestHeaderProto;
 use crate::proto::RpcHeader::*;
-use protobuf::{CodedOutputStream, Message};
+use protobuf::{CodedInputStream, CodedOutputStream, Message};
 
 const RPC_HEADER: &[u8; 4] = b"hrpc";
 const RPC_VERSION: u8 = 9;
+const RPC_HDFS_PROTOCOL: &str = "org.apache.hadoop.hdfs.protocol.ClientProtocol";
 
 /**
  * Creating a TCP connection.  This trait may implement different strategies
@@ -99,6 +101,8 @@ pub enum RpcError {
     IO(#[from] io::Error),
     #[error(transparent)]
     Protobuf(#[from] protobuf::ProtobufError),
+    #[error("{:?}:{}: {}", .0.get_status(), .0.get_exceptionClassName(), .0.get_errorMsg())]
+    Response(Box<RpcResponseHeaderProto>),
 }
 
 impl HdfsConnection {
@@ -141,7 +145,7 @@ impl HdfsConnection {
 
             let mut cc = IpcConnectionContextProto::default();
             cc.mut_userInfo().set_effectiveUser("ib".to_owned());
-            cc.set_protocol("org.apache.hadoop.hdfs.protocol.ClientProtocol".to_owned());
+            cc.set_protocol(RPC_HDFS_PROTOCOL.to_owned());
 
             Self::send_message_group(&mut cos, &[&hh, &cc])?;
             cos.flush()?;
@@ -159,7 +163,8 @@ impl HdfsConnection {
             .map(|len| len + ::protobuf::rt::compute_raw_varint32_size(len))
             .sum();
 
-        cos.write_all(&header_len.to_be_bytes()).unwrap();
+        // TODO byteorder
+        cos.write_all(&header_len.to_be_bytes())?;
         for msg in messages {
             msg.write_length_delimited_to(cos)?;
         }
@@ -168,13 +173,58 @@ impl HdfsConnection {
 
     pub fn call(
         &mut self,
-        method: &str,
+        method_name: Cow<'_, str>,
         input: &dyn Message,
         output: &mut dyn Message,
     ) -> Result<(), RpcError> {
         // TODO smallvec buffer for async IO? also, const generic can be used
         // for expected header size.  But it makes no lot sense for async, as it
         // does not use stack, but creates structs all the time.
-        unimplemented!()
+        let mut hh = RpcRequestHeaderProto::default();
+        hh.set_rpcKind(RpcKindProto::RPC_PROTOCOL_BUFFER);
+        hh.set_rpcOp(RpcRequestHeaderProto_OperationProto::RPC_FINAL_PACKET);
+        hh.set_callId(self.call_id.next());
+        hh.set_retryCount(-1);
+        hh.set_clientId(self.client_id.clone());
+
+        let mut rh = RequestHeaderProto::default();
+        rh.set_declaringClassProtocolName(RPC_HDFS_PROTOCOL.to_owned());
+        rh.set_clientProtocolVersion(1);
+        rh.set_methodName(method_name.into_owned());
+
+        let mut pbs = CodedOutputStream::new(&mut self.stream);
+
+        Self::send_message_group(&mut pbs, &[&hh, &rh, input])?;
+
+        // TODO: byteorder
+        let mut data = [0u8; 4];
+        self.stream.read_exact(&mut data)?;
+        let resp_len = u32::from_be_bytes(data);
+
+        let mut frame = (&mut self.stream).take(resp_len as u64);
+        let mut pis = CodedInputStream::new(&mut frame);
+
+        // Delimited message
+        let resp_header: RpcResponseHeaderProto = pis.read_message()?;
+
+        if resp_header.get_status() != RpcResponseHeaderProto_RpcStatusProto::SUCCESS {
+            return Err(RpcError::Response(Box::new(resp_header)));
+        }
+
+        output.merge_from(&mut pis)?;
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_infinite_seq1() {
+        let mut is = InfiniteSeq::new();
+        assert_eq!(is.next(), 0);
+        assert_eq!(is.next(), 1);
+        assert_eq!(is.next(), 2);
     }
 }
