@@ -103,6 +103,8 @@ pub enum RpcError {
     Protobuf(#[from] protobuf::ProtobufError),
     #[error("{:?}:{}: {}", .0.get_status(), .0.get_exceptionClassName(), .0.get_errorMsg())]
     Response(Box<RpcResponseHeaderProto>),
+    #[error("incomplete protobuf record")]
+    IncompleteResponse,
 }
 
 impl HdfsConnection {
@@ -212,6 +214,9 @@ impl HdfsConnection {
         }
 
         output.merge_from(&mut pis)?;
+        if !output.is_initialized() {
+            return Err(RpcError::IncompleteResponse);
+        }
         Ok(())
     }
 }
