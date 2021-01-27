@@ -173,12 +173,13 @@ impl HdfsConnection {
         Ok(cos.flush()?)
     }
 
-    pub fn call(
+    // TODO I failed to read to &dyn Message easily with current
+    // protobuf, thus this method has Output type argument.
+    pub fn call<Output: Message>(
         &mut self,
         method_name: Cow<'_, str>,
         input: &dyn Message,
-        output: &mut dyn Message,
-    ) -> Result<(), RpcError> {
+    ) -> Result<Output, RpcError> {
         // TODO smallvec buffer for async IO? also, const generic can be used
         // for expected header size.  But it makes no lot sense for async, as it
         // does not use stack, but creates structs all the time.
@@ -213,11 +214,8 @@ impl HdfsConnection {
             return Err(RpcError::Response(Box::new(resp_header)));
         }
 
-        output.merge_from(&mut pis)?;
-        if !output.is_initialized() {
-            return Err(RpcError::IncompleteResponse);
-        }
-        Ok(())
+        // Delimited message
+        Ok(pis.read_message()?)
     }
 }
 
