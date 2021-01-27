@@ -50,8 +50,9 @@ fn format_flags(flags: u32, type_: HdfsFileStatusProto_FileType) -> String {
  * See
  * hadoop/hadoop-common-project/hadoop-common/src/main/java/org/apache/hadoop/fs/shell/Ls.java
  */
+/// ls options are factored out to separate struct for convenience.
 #[derive(Debug, StructOpt)]
-pub struct LsArgs {
+pub struct LsOpts {
     #[structopt(short)]
     directory: bool,
     // TODO mtime and atime are exclusive
@@ -65,9 +66,15 @@ pub struct LsArgs {
     reversed: bool,
     #[structopt(short = "R")]
     recursive: bool,
+    // TODO ...
+}
+
+#[derive(Debug, StructOpt)]
+pub struct LsArgs {
+    #[structopt(flatten)]
+    opts: LsOpts,
     #[structopt(name = "path")]
     paths: Vec<String>,
-    // TODO ...
 }
 
 pub struct Ls<'a> {
@@ -79,7 +86,8 @@ impl<'a> Ls<'a> {
         Ls { service }
     }
 
-    fn list_dir(&mut self, path: String, args: &LsArgs) -> Result<()> {
+    fn list_dir(&mut self, path: String, args: &LsOpts) -> Result<()> {
+        // TODO handle sorting and other keys
         let mut state: Option<Vec<u8>> = None;
 
         loop {
@@ -133,12 +141,9 @@ impl<'a> Ls<'a> {
 impl<'a> Command for Ls<'a> {
     type Args = LsArgs;
 
-    fn run(&mut self, mut args: Self::Args) -> Result<()> {
-        // TODO sort and other keys
-        let mut paths = vec![];
-        std::mem::swap(&mut paths, &mut args.paths);
-        for path in paths {
-            self.list_dir(path, &args)?;
+    fn run(&mut self, args: Self::Args) -> Result<()> {
+        for path in args.paths {
+            self.list_dir(path, &args.opts)?;
         }
         Ok(())
     }
