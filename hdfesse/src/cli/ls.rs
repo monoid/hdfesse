@@ -88,14 +88,13 @@ impl<'a> Ls<'a> {
 
     fn list_dir(&mut self, path: String, args: &LsOpts) -> Result<()> {
         // TODO handle sorting and other keys
-        let mut state: Option<Vec<u8>> = None;
+        let mut prev_name: Option<Vec<u8>> = None;
 
         loop {
-            let is_first = &state.is_none();
-            let list_from = state.unwrap_or(vec![]);
+            let is_first = &prev_name.is_none();
+            let list_from = prev_name.unwrap_or(vec![]);
             let listing = self.service.getListing(path.clone(), list_from, false)?;
             let partial_list = listing.get_dirList().get_partialListing();
-            let list_len = partial_list.len();
 
             if !args.recursive & is_first {
                 println!(
@@ -125,13 +124,16 @@ impl<'a> Ls<'a> {
             if listing.get_dirList().get_remainingEntries() == 0 {
                 break;
             }
-            if list_len > 0 {
-                // Search further from the last value
-                state = partial_list
-                    .last()
-                    .map(|entry| entry.get_path().iter().cloned().collect());
-            } else {
-                state = Some(vec![]);
+            // Search further from the last value
+            prev_name = partial_list
+                .last()
+                .map(|entry| entry.get_path().to_vec());
+            // It is very unlikely that partial_list is empty and
+            // prev_name is None while remainingEntries is not zero.
+            // Perhaps, it should be reported as a server's invalid
+            // data.
+            if prev_name.is_none() {
+                break;
             }
         }
         Ok(())
