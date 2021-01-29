@@ -15,7 +15,7 @@
 */
 use super::Command;
 use anyhow::Result;
-use hdfesse_proto::hdfs::HdfsFileStatusProto_FileType;
+use hdfesse_proto::hdfs::{HdfsFileStatusProto_FileType, HdfsFileStatusProto_Flags};
 use libhdfesse::service::HdfsService;
 use structopt::StructOpt;
 
@@ -33,13 +33,16 @@ fn format_flag_group(group: u32) -> &'static str {
     }
 }
 
-fn format_flags(flags: u32, type_: HdfsFileStatusProto_FileType) -> String {
-    let mut res = String::with_capacity(10);
-    res.push(match type_ {
+fn format_type(type_: HdfsFileStatusProto_FileType) -> char {
+    match type_ {
         HdfsFileStatusProto_FileType::IS_DIR => 'd',
         HdfsFileStatusProto_FileType::IS_FILE => '-',
         HdfsFileStatusProto_FileType::IS_SYMLINK => 's',
-    });
+    }
+}
+
+fn format_flags(flags: u32) -> String {
+    let mut res = String::with_capacity(9);
     for offset in [6u32, 3, 0].iter() {
         res.push_str(format_flag_group((flags >> offset) & 0x7));
     }
@@ -55,10 +58,9 @@ fn format_flags(flags: u32, type_: HdfsFileStatusProto_FileType) -> String {
 pub struct LsOpts {
     #[structopt(short)]
     directory: bool,
-    // TODO mtime and atime are exclusive
-    #[structopt(short)]
+    #[structopt(short = "t")]
     mtime: bool,
-    #[structopt(short)]
+    #[structopt(short = "u")]
     atime: bool,
     #[structopt(short = "C")]
     path_only: bool,
@@ -108,15 +110,36 @@ impl<'a> Ls<'a> {
             // collect everything in memory; but in case of problem, you can
             // at least get default list and sort it with some external tool.
             for entry in partial_list.iter() {
+                print!(
+                    "{}{}{} ",
+                    format_type(entry.get_fileType()),
+                    format_flags(entry.get_permission().get_perm()),
+                    if entry.get_flags() & (HdfsFileStatusProto_Flags::HAS_ACL as u32) != 0 {
+                        '+'
+                    } else {
+                        '-'
+                    },
+                );
+                if entry.get_fileType() == HdfsFileStatusProto_FileType::IS_DIR {
+                    print!("-");
+                } else {
+                    print!("{}", entry.get_block_replication());
+                }
+                let time = chrono::NaiveDateTime::from_timestamp(
+                    if args.atime {
+                        entry.get_access_time()
+                    } else {
+                        entry.get_modification_time()
+                    } as i64
+                        / 1000, // millisec to secs
+                    0,
+                );
                 println!(
-                    "{} {} {} {} {} {} {}",
-                    format_flags(entry.get_permission().get_perm(), entry.get_fileType()),
-                    entry.get_block_replication(),
+                    " {} {} {} {} {}",
                     entry.get_owner(),
                     entry.get_group(),
                     entry.get_length(),
-                    // TODO format date and time
-                    entry.get_modification_time(),
+                    time.format("%Y-%m-%d %H:%M"),
                     // TODO original implementation uses different lossy char
                     String::from_utf8_lossy(entry.get_path()),
                 );

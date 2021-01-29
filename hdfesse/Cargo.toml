@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 anyhow = "1.0"
+chrono = "0.4"
 hdfesse_proto = { path = "../hdfesse_proto" }
 libhdfesse = { path = "../libhdfesse" }
 structopt = "0.3"
