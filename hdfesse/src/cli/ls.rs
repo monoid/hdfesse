@@ -41,7 +41,7 @@ fn format_flags(flags: u32, type_: HdfsFileStatusProto_FileType) -> String {
         HdfsFileStatusProto_FileType::IS_SYMLINK => 's',
     });
     for offset in [6u32, 3, 0].iter() {
-        res.extend(format_flag_group((flags >> offset) & 0x7).chars());
+        res.push_str(format_flag_group((flags >> offset) & 0x7));
     }
     res
 }
@@ -92,7 +92,7 @@ impl<'a> Ls<'a> {
 
         loop {
             let is_first = &prev_name.is_none();
-            let list_from = prev_name.unwrap_or(vec![]);
+            let list_from = prev_name.unwrap_or_default();
             let listing = self.service.getListing(path.clone(), list_from, false)?;
             let partial_list = listing.get_dirList().get_partialListing();
 
@@ -125,9 +125,7 @@ impl<'a> Ls<'a> {
                 break;
             }
             // Search further from the last value
-            prev_name = partial_list
-                .last()
-                .map(|entry| entry.get_path().to_vec());
+            prev_name = partial_list.last().map(|entry| entry.get_path().to_vec());
             // It is very unlikely that partial_list is empty and
             // prev_name is None while remainingEntries is not zero.
             // Perhaps, it should be reported as a server's invalid
