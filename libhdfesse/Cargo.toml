@@ -10,3 +10,4 @@ edition = "2018"
 hdfesse_proto = { path = "../hdfesse_proto" }
 protobuf = { version = "2", features = ["with-bytes"] }
 thiserror = "1.0"
+xml-rs = "0.8"
