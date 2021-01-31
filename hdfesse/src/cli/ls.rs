@@ -171,3 +171,28 @@ impl<'a> Command for Ls<'a> {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_format_flags() {
+        assert_eq!(format_flags(0o000), "---------");
+        assert_eq!(format_flags(0o007), "------rwx");
+        assert_eq!(format_flags(0o077), "---rwxrwx");
+        assert_eq!(format_flags(0o777), "rwxrwxrwx");
+        assert_eq!(format_flags(0o707), "rwx---rwx");
+        assert_eq!(format_flags(0o123), "--x-w--wx");
+        assert_eq!(format_flags(0o456), "r--r-xrw-");
+
+        assert_eq!(format_flags(1), "--------x");
+        assert_eq!(format_flags(2), "-------w-");
+        assert_eq!(format_flags(3), "-------wx");
+        assert_eq!(format_flags(4), "------r--");
+        assert_eq!(format_flags(5), "------r-x");
+        assert_eq!(format_flags(6), "------rw-");
+        assert_eq!(format_flags(7), "------rwx");
+        assert_eq!(format_flags(42), "---r-x-w-");
+    }
+}
