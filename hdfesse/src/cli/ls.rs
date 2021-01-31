@@ -16,7 +16,7 @@
 use super::Command;
 use anyhow::Result;
 use hdfesse_proto::hdfs::{HdfsFileStatusProto_FileType, HdfsFileStatusProto_Flags};
-use libhdfesse::service::HdfsService;
+use libhdfesse::service::ClientNamenodeService;
 use structopt::StructOpt;
 
 fn format_flag_group(group: u32) -> &'static str {
@@ -37,10 +37,14 @@ fn format_type(type_: HdfsFileStatusProto_FileType) -> char {
     match type_ {
         HdfsFileStatusProto_FileType::IS_DIR => 'd',
         HdfsFileStatusProto_FileType::IS_FILE => '-',
+        // It seems that original hdfs doesn't care about this
+        // case.
         HdfsFileStatusProto_FileType::IS_SYMLINK => 's',
     }
 }
 
+// TODO It can be optimized to write, not to create a string.  But
+// does it worth it?
 fn format_flags(flags: u32) -> String {
     let mut res = String::with_capacity(9);
     for offset in [6u32, 3, 0].iter() {
@@ -80,11 +84,11 @@ pub struct LsArgs {
 }
 
 pub struct Ls<'a> {
-    service: &'a mut HdfsService,
+    service: &'a mut ClientNamenodeService,
 }
 
 impl<'a> Ls<'a> {
-    pub fn new(service: &'a mut HdfsService) -> Self {
+    pub fn new(service: &'a mut ClientNamenodeService) -> Self {
         Ls { service }
     }
 

@@ -44,7 +44,7 @@ fn main() -> Result<()> {
     let client =
         libhdfesse::rpc::HdfsConnection::new(opt.namenode, &libhdfesse::rpc::SimpleConnector {})?;
 
-    let mut service = libhdfesse::service::HdfsService::new(client);
+    let mut service = libhdfesse::service::ClientNamenodeService::new(client);
 
     match opt.subcmd {
         TopSubcmd::Dfs(dfs) => match dfs {
