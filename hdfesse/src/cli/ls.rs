@@ -15,8 +15,11 @@
 */
 use super::Command;
 use anyhow::Result;
-use hdfesse_proto::hdfs::{HdfsFileStatusProto_FileType, HdfsFileStatusProto_Flags};
+use hdfesse_proto::hdfs::{
+    HdfsFileStatusProto, HdfsFileStatusProto_FileType, HdfsFileStatusProto_Flags,
+};
 use libhdfesse::service::ClientNamenodeService;
+use protobuf::RepeatedField;
 use structopt::StructOpt;
 
 fn format_flag_group(group: u32) -> &'static str {
@@ -83,6 +86,65 @@ pub struct LsArgs {
     paths: Vec<String>,
 }
 
+// TODO it has to be moved to libhdfesse and made public.
+struct LsGroupIterator<'a> {
+    path: &'a str,
+    prev_name: Option<Vec<u8>>,
+    len: Option<usize>,
+    count: usize,
+
+    service: &'a mut ClientNamenodeService,
+}
+
+impl<'a> LsGroupIterator<'a> {
+    fn new(service: &'a mut ClientNamenodeService, path: &'a str) -> Self {
+        Self {
+            path,
+            prev_name: Default::default(),
+            len: None,
+            count: 0,
+            service,
+        }
+    }
+
+    fn next_group(&mut self) -> Result<(usize, RepeatedField<HdfsFileStatusProto>)> {
+        let list_from = self.prev_name.take().unwrap_or_default();
+        let mut listing = self
+            .service
+            .getListing(self.path.to_owned(), list_from, false)?;
+        let partial_list = listing.mut_dirList().take_partialListing();
+
+        self.count += partial_list.len();
+        let len = self.count + listing.get_dirList().get_remainingEntries() as usize;
+        self.len = Some(len);
+
+        // Search further from the last value
+        // It is very unlikely that partial_list is empty and
+        // prev_name is None while remainingEntries is not zero.
+        // Perhaps, it should be reported as a server's invalid
+        // data.
+        self.prev_name = partial_list.last().map(|entry| entry.get_path().to_vec());
+
+        Ok((len, partial_list))
+    }
+}
+
+impl<'a> Iterator for LsGroupIterator<'a> {
+    type Item = Result<(usize, RepeatedField<HdfsFileStatusProto>)>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.len.map(|len| self.count >= len).unwrap_or(false) {
+            None
+        } else {
+            Some(self.next_group())
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, self.len)
+    }
+}
+
 pub struct Ls<'a> {
     service: &'a mut ClientNamenodeService,
 }
@@ -94,26 +156,21 @@ impl<'a> Ls<'a> {
 
     fn list_dir(&mut self, path: String, args: &LsOpts) -> Result<()> {
         // TODO handle sorting and other keys
-        let mut prev_name: Option<Vec<u8>> = None;
+        let mut is_first = true;
 
-        loop {
-            let is_first = &prev_name.is_none();
-            let list_from = prev_name.unwrap_or_default();
-            let listing = self.service.getListing(path.clone(), list_from, false)?;
-            let partial_list = listing.get_dirList().get_partialListing();
+        for group in LsGroupIterator::new(self.service, &path) {
+            let (total_len, group) = group?;
 
             if !args.recursive & is_first {
-                println!(
-                    "Found {} items",
-                    partial_list.len() + listing.get_dirList().get_remainingEntries() as usize
-                );
+                println!("Found {} items", total_len,);
+                is_first = false;
             }
 
             // Using streaming approach is crucial for huge directories where
             // data does not fit into memory.  For sorted data, one has to
             // collect everything in memory; but in case of problem, you can
             // at least get default list and sort it with some external tool.
-            for entry in partial_list.iter() {
+            for entry in group.iter() {
                 print!(
                     "{}{}{} ",
                     format_type(entry.get_fileType()),
@@ -147,18 +204,6 @@ impl<'a> Ls<'a> {
                     // TODO original implementation uses different lossy char
                     String::from_utf8_lossy(entry.get_path()),
                 );
-            }
-            if listing.get_dirList().get_remainingEntries() == 0 {
-                break;
-            }
-            // Search further from the last value
-            prev_name = partial_list.last().map(|entry| entry.get_path().to_vec());
-            // It is very unlikely that partial_list is empty and
-            // prev_name is None while remainingEntries is not zero.
-            // Perhaps, it should be reported as a server's invalid
-            // data.
-            if prev_name.is_none() {
-                break;
             }
         }
         Ok(())

@@ -103,6 +103,7 @@ dependencies = [
  "chrono",
  "hdfesse_proto",
  "libhdfesse",
+ "protobuf",
  "structopt",
 ]
 
