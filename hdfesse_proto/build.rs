@@ -5,6 +5,8 @@ fn main() {
         "protobuf/acl.proto",
         "protobuf/ClientNamenodeProtocol.proto",
         "protobuf/datatransfer.proto",
+        "protobuf/erasurecoding.proto",
+        "protobuf/encryption.proto",
         "protobuf/HAServiceProtocol.proto",
         "protobuf/hdfs.proto",
         "protobuf/inotify.proto",

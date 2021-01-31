@@ -21,6 +21,8 @@ pub mod RpcHeader;
 pub mod Security;
 pub mod acl;
 pub mod datatransfer;
+pub mod encryption;
+pub mod erasurecoding;
 pub mod hdfs;
 pub mod inotify;
 pub mod xattr;
