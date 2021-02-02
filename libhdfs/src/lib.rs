@@ -23,7 +23,7 @@ Based on the
 https://github.com/apache/hadoop/blob/a89ca56a1b0eb949f56e7c6c5c25fdf87914a02f/hadoop-hdfs-project/hadoop-hdfs-native-client/src/main/native/libhdfs/include/hdfs/hdfs.h
 
 */
-use std::ffi::c_void;
+use std::{ffi::{c_void, CStr}, borrow::Cow};
 use std::os::raw::{c_char, c_int, c_short};
 
 pub type tPort = u16;
@@ -285,9 +285,18 @@ fn hdfsCloseFile(_fs: hdfsFS, _file: hdfsFile) -> c_int {
 }
 
 #[no_mangle]
-pub extern "C"
-fn hdfsExists(_fs: hdfsFS, _path: *const c_char) -> c_int {
-    unimplemented!()
+pub extern "C" fn hdfsExists(fs: hdfsFS, path: *const c_char) -> c_int {
+    let path = unsafe { CStr::from_ptr(path) }.to_str();
+    let fs = unsafe { fs.as_mut() };
+
+    match (fs, path) {
+        (Some(fs), Ok(path)) => {
+            fs.get_file_info(Cow::Borrowed(path)).map(|_| 1).unwrap_or(0)
+        }
+        // TODO handle different errors, set err variables
+        _ => -1
+    }
+
 }
 
 #[no_mangle]
