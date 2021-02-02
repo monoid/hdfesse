@@ -14,6 +14,7 @@
    limitations under the License.
 */
 pub mod ls;
+pub mod mv;
 use anyhow::Result;
 
 pub trait Command {

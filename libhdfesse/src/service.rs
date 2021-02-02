@@ -175,8 +175,12 @@ impl ClientNamenodeService {
     }
 
     #[allow(non_snake_case)]
-    pub fn rename(&mut self, args: &RenameRequestProto) -> Result<RenameResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("rename"), args)?)
+    pub fn rename(&mut self, src: String, dst: String) -> Result<RenameResponseProto> {
+        let mut args = RenameRequestProto::default();
+        args.set_src(src);
+        args.set_dst(dst);
+
+        Ok(self.conn.call(Cow::Borrowed("rename"), &args)?)
     }
 
     #[allow(non_snake_case)]

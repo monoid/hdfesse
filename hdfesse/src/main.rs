@@ -36,6 +36,8 @@ enum TopSubcmd {
 enum Dfs {
     #[structopt(name = "-ls")]
     Ls(cli::ls::LsArgs),
+    #[structopt(name = "-mv")]
+    Mv(cli::mv::MvArgs),
 }
 
 fn main() -> Result<()> {
@@ -50,6 +52,9 @@ fn main() -> Result<()> {
         TopSubcmd::Dfs(dfs) => match dfs {
             Dfs::Ls(ls_args) => {
                 cli::ls::Ls::new(&mut service).run(ls_args)?;
+            }
+            Dfs::Mv(mv_args) => {
+                cli::mv::Mv::new(&mut service).run(mv_args)?;
             }
         },
     }

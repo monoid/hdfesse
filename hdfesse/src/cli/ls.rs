@@ -151,7 +151,7 @@ pub struct Ls<'a> {
 
 impl<'a> Ls<'a> {
     pub fn new(service: &'a mut ClientNamenodeService) -> Self {
-        Ls { service }
+        Self { service }
     }
 
     fn list_dir(&mut self, path: String, args: &LsOpts) -> Result<()> {
