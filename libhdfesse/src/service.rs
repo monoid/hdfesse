@@ -359,11 +359,10 @@ impl ClientNamenodeService {
     }
 
     #[allow(non_snake_case)]
-    pub fn getFileInfo(
-        &mut self,
-        args: &GetFileInfoRequestProto,
-    ) -> Result<GetFileInfoResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("getFileInfo"), args)?)
+    pub fn getFileInfo(&mut self, src: String) -> Result<GetFileInfoResponseProto> {
+        let mut args = GetFileInfoRequestProto::new();
+        args.set_src(src);
+        Ok(self.conn.call(Cow::Borrowed("getFileInfo"), &args)?)
     }
 
     #[allow(non_snake_case)]

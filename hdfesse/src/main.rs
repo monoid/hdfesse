@@ -48,15 +48,10 @@ fn main() -> Result<()> {
 
     let mut service = libhdfesse::service::ClientNamenodeService::new(client);
 
-    match opt.subcmd {
+    std::process::exit(match opt.subcmd {
         TopSubcmd::Dfs(dfs) => match dfs {
-            Dfs::Ls(ls_args) => {
-                cli::ls::Ls::new(&mut service).run(ls_args)?;
-            }
-            Dfs::Mv(mv_args) => {
-                cli::mv::Mv::new(&mut service).run(mv_args)?;
-            }
+            Dfs::Ls(ls_args) => cli::ls::Ls::new(&mut service).run(ls_args)?,
+            Dfs::Mv(mv_args) => cli::mv::Mv::new(&mut service).run(mv_args)?,
         },
-    }
-    Ok(())
+    });
 }

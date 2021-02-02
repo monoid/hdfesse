@@ -13,3 +13,4 @@ hdfesse_proto = { path = "../hdfesse_proto" }
 libhdfesse = { path = "../libhdfesse" }
 protobuf = "2"
 structopt = "0.3"
+thiserror = "1.0"

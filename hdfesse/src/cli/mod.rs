@@ -20,5 +20,5 @@ use anyhow::Result;
 pub trait Command {
     type Args: structopt::StructOpt;
 
-    fn run(&mut self, args: Self::Args) -> Result<()>;
+    fn run(&mut self, args: Self::Args) -> Result<i32>;
 }

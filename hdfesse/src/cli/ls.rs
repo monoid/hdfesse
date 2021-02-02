@@ -21,6 +21,7 @@ use hdfesse_proto::hdfs::{
 use libhdfesse::service::ClientNamenodeService;
 use protobuf::RepeatedField;
 use structopt::StructOpt;
+use thiserror::Error;
 
 fn format_flag_group(group: u32) -> &'static str {
     match group {
@@ -84,6 +85,12 @@ pub struct LsArgs {
     opts: LsOpts,
     #[structopt(name = "path")]
     paths: Vec<String>,
+}
+
+#[derive(Debug, Error)]
+pub enum LsError {
+    #[error("ls: `{0}': No such file or directory")]
+    NotFound(String),
 }
 
 // TODO it has to be moved to libhdfesse and made public.
@@ -155,6 +162,10 @@ impl<'a> Ls<'a> {
     }
 
     fn list_dir(&mut self, path: String, args: &LsOpts) -> Result<()> {
+        let info = self.service.getFileInfo(path.clone())?;
+        if !info.has_fs() {
+            return Err(LsError::NotFound(path).into());
+        }
         // TODO handle sorting and other keys
         let mut is_first = true;
 
@@ -213,11 +224,15 @@ impl<'a> Ls<'a> {
 impl<'a> Command for Ls<'a> {
     type Args = LsArgs;
 
-    fn run(&mut self, args: Self::Args) -> Result<()> {
+    fn run(&mut self, args: Self::Args) -> Result<i32> {
+        let mut has_err = false;
         for path in args.paths {
-            self.list_dir(path, &args.opts)?;
+            if let Err(e) = self.list_dir(path, &args.opts) {
+                has_err = true;
+                eprintln!("{:?}", e);
+            }
         }
-        Ok(())
+        Ok(if has_err { 1 } else { 0 })
     }
 }
 
