@@ -13,6 +13,8 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
+use std::borrow::Cow;
+
 use super::Command;
 use anyhow::Result;
 use hdfesse_proto::hdfs::{
@@ -153,12 +155,12 @@ impl<'a> Iterator for LsGroupIterator<'a> {
     }
 }
 
-pub struct Ls<'a> {
-    hdfs: HDFS<'a>,
+pub struct Ls {
+    hdfs: HDFS,
 }
 
-impl<'a> Ls<'a> {
-    pub fn new(service: &'a mut ClientNamenodeService) -> Self {
+impl Ls {
+    pub fn new(service: ClientNamenodeService) -> Self {
         Self {
             hdfs: HDFS::new(service),
         }
@@ -166,12 +168,14 @@ impl<'a> Ls<'a> {
 
     fn list_dir(&mut self, path: String, args: &LsOpts) -> Result<()> {
         // Ensure file exists.
-        self.hdfs.get_file_info(path.clone()).map_err(LsError::Fs)?;
+        self.hdfs
+            .get_file_info(Cow::Borrowed(&path))
+            .map_err(LsError::Fs)?;
 
         // TODO handle sorting and other keys
         let mut is_first = true;
 
-        for group in LsGroupIterator::new(self.hdfs.service, &path) {
+        for group in LsGroupIterator::new(&mut self.hdfs.service, &path) {
             let (total_len, group) = group?;
 
             if !args.recursive & is_first {
@@ -223,7 +227,7 @@ impl<'a> Ls<'a> {
     }
 }
 
-impl<'a> Command for Ls<'a> {
+impl Command for Ls {
     type Args = LsArgs;
     type Error = LsError;
 

@@ -13,6 +13,8 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
+use std::borrow::Cow;
+
 use crate::rpc;
 use crate::service;
 use hdfesse_proto::hdfs::HdfsFileStatusProto;
@@ -26,20 +28,20 @@ pub enum FsError {
     Rpc(rpc::RpcError),
 }
 
-pub struct HDFS<'a> {
+pub struct HDFS {
     // TODO make it private after moving here LsGroupiterator.
-    pub service: &'a mut service::ClientNamenodeService,
+    pub service: service::ClientNamenodeService,
 }
 
-impl<'a> HDFS<'a> {
-    pub fn new(service: &'a mut service::ClientNamenodeService) -> Self {
+impl HDFS {
+    pub fn new(service: service::ClientNamenodeService) -> Self {
         Self { service }
     }
 
-    pub fn get_file_info(&mut self, src: String) -> Result<HdfsFileStatusProto, FsError> {
+    pub fn get_file_info(&mut self, src: Cow<str>) -> Result<HdfsFileStatusProto, FsError> {
         self.service
-            .getFileInfo(src.clone())
+            .getFileInfo(src.clone().into_owned())
             .map_err(FsError::Rpc)?
-            .ok_or(FsError::NotFound(src))
+            .ok_or_else(|| FsError::NotFound(src.into_owned()))
     }
 }

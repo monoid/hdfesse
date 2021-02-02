@@ -39,7 +39,7 @@ pub enum tObjectKind {
 }
 
 // TODO make these types distinct
-pub type hdfsFS = *mut c_void;
+pub type hdfsFS = *mut libhdfesse::fs::HDFS;
 pub type hdfsBuilder = c_void;
 pub type hdfsStreamBuilder = c_void;
 pub type hadoopRzOptions = c_void;
