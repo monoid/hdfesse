@@ -14,7 +14,8 @@
    limitations under the License.
 */
 use hdfesse_proto::{
-    acl::*, encryption::*, erasurecoding::*, xattr::*, ClientNamenodeProtocol::*, Security::*,
+    acl::*, encryption::*, erasurecoding::*, hdfs::HdfsFileStatusProto, xattr::*,
+    ClientNamenodeProtocol::*, Security::*,
 };
 use std::borrow::Cow;
 
@@ -359,10 +360,16 @@ impl ClientNamenodeService {
     }
 
     #[allow(non_snake_case)]
-    pub fn getFileInfo(&mut self, src: String) -> Result<GetFileInfoResponseProto> {
+    pub fn getFileInfo(&mut self, src: String) -> Result<Option<HdfsFileStatusProto>> {
         let mut args = GetFileInfoRequestProto::new();
         args.set_src(src);
-        Ok(self.conn.call(Cow::Borrowed("getFileInfo"), &args)?)
+        let mut res: GetFileInfoResponseProto =
+            self.conn.call(Cow::Borrowed("getFileInfo"), &args)?;
+        Ok(if res.has_fs() {
+            Some(res.take_fs())
+        } else {
+            None
+        })
     }
 
     #[allow(non_snake_case)]

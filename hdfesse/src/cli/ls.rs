@@ -18,6 +18,7 @@ use anyhow::Result;
 use hdfesse_proto::hdfs::{
     HdfsFileStatusProto, HdfsFileStatusProto_FileType, HdfsFileStatusProto_Flags,
 };
+use libhdfesse::fs::{FsError, HDFS};
 use libhdfesse::service::ClientNamenodeService;
 use protobuf::RepeatedField;
 use structopt::StructOpt;
@@ -89,11 +90,11 @@ pub struct LsArgs {
 
 #[derive(Debug, Error)]
 pub enum LsError {
-    #[error("ls: `{0}': No such file or directory")]
-    NotFound(String),
+    #[error("ls: {0}")]
+    Fs(#[from] FsError),
 }
 
-// TODO it has to be moved to libhdfesse and made public.
+// TODO it has to be moved to libhdfesse::fs and made public.
 struct LsGroupIterator<'a> {
     path: &'a str,
     prev_name: Option<Vec<u8>>,
@@ -153,23 +154,24 @@ impl<'a> Iterator for LsGroupIterator<'a> {
 }
 
 pub struct Ls<'a> {
-    service: &'a mut ClientNamenodeService,
+    hdfs: HDFS<'a>,
 }
 
 impl<'a> Ls<'a> {
     pub fn new(service: &'a mut ClientNamenodeService) -> Self {
-        Self { service }
+        Self {
+            hdfs: HDFS::new(service),
+        }
     }
 
     fn list_dir(&mut self, path: String, args: &LsOpts) -> Result<()> {
-        let info = self.service.getFileInfo(path.clone())?;
-        if !info.has_fs() {
-            return Err(LsError::NotFound(path).into());
-        }
+        // Ensure file exists.
+        self.hdfs.get_file_info(path.clone()).map_err(LsError::Fs)?;
+
         // TODO handle sorting and other keys
         let mut is_first = true;
 
-        for group in LsGroupIterator::new(self.service, &path) {
+        for group in LsGroupIterator::new(self.hdfs.service, &path) {
             let (total_len, group) = group?;
 
             if !args.recursive & is_first {
@@ -223,13 +225,14 @@ impl<'a> Ls<'a> {
 
 impl<'a> Command for Ls<'a> {
     type Args = LsArgs;
+    type Error = LsError;
 
-    fn run(&mut self, args: Self::Args) -> Result<i32> {
+    fn run(&mut self, args: Self::Args) -> Result<i32, Self::Error> {
         let mut has_err = false;
         for path in args.paths {
             if let Err(e) = self.list_dir(path, &args.opts) {
                 has_err = true;
-                eprintln!("{:?}", e);
+                eprintln!("{}", e);
             }
         }
         Ok(if has_err { 1 } else { 0 })

@@ -15,10 +15,10 @@
 */
 pub mod ls;
 pub mod mv;
-use anyhow::Result;
 
 pub trait Command {
     type Args: structopt::StructOpt;
+    type Error: Into<anyhow::Error>;
 
-    fn run(&mut self, args: Self::Args) -> Result<i32>;
+    fn run(&mut self, args: Self::Args) -> Result<i32, Self::Error>;
 }

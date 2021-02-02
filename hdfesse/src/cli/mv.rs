@@ -38,6 +38,7 @@ impl<'a> Mv<'a> {
 
 impl<'a> Command for Mv<'a> {
     type Args = MvArgs;
+    type Error = anyhow::Error;
 
     fn run(&mut self, args: Self::Args) -> Result<i32> {
         // TODO It seems that we should prevent overwrites and skip
