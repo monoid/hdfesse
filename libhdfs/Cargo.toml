@@ -1,5 +1,5 @@
 [package]
-name = "libhdfs"
+name = "hdfs"
 version = "0.1.0"
 authors = ["Ivan Boldyrev <lispnik@gmail.com>"]
 edition = "2018"
@@ -8,3 +8,7 @@ edition = "2018"
 
 [dependencies]
 libhdfesse = { path = "../libhdfesse" }
+hdfesse_proto = { path = "../hdfesse_proto" }
+
+[lib]
+crate-type = ["cdylib"]
