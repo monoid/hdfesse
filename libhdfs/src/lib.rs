@@ -15,7 +15,12 @@
 */
 #![allow(non_snake_case)]
 #![allow(non_camel_case_types)]
+use hdfesse_proto::hdfs::{HdfsFileStatusProto, HdfsFileStatusProto_FileType};
+
+use std::convert::TryFrom;
+use std::ffi::CString;
 use std::os::raw::{c_char, c_int, c_short};
+use std::ptr::null_mut;
 /**
 
 Drop-in replacement of libhdfs.
@@ -290,8 +295,9 @@ pub extern "C" fn hdfsCloseFile(_fs: hdfsFS, _file: hdfsFile) -> c_int {
 
 #[no_mangle]
 pub extern "C" fn hdfsExists(fs: hdfsFS, path: *const c_char) -> c_int {
+    // unsafe as much as input values are correct.
     let path = unsafe { CStr::from_ptr(path) }.to_str();
-    let fs = unsafe { fs.as_mut() };
+    let fs = unsafe { fs.as_mut() }; // TODO unwrap?  Fail if it is null.
 
     match (fs, path) {
         (Some(fs), Ok(path)) => fs
@@ -437,7 +443,7 @@ pub extern "C" fn hdfsSetReplication(
 pub struct hdfsFileInfo {
     mKind: tObjectKind,
     mName: *mut c_char,
-    mLatMod: tTime,
+    mLastMod: tTime,
     mSize: tOffset,
     mReplication: c_short,
     mBlockSize: tOffset,
@@ -445,6 +451,44 @@ pub struct hdfsFileInfo {
     mGroup: *mut c_char,
     mPermissions: c_short,
     mLastAccess: tTime,
+}
+
+impl TryFrom<&HdfsFileStatusProto> for hdfsFileInfo {
+    type Error = std::ffi::NulError;
+
+    fn try_from(fstat: &HdfsFileStatusProto) -> Result<Self, Self::Error> {
+        let mKind = if fstat.get_fileType() == HdfsFileStatusProto_FileType::IS_DIR {
+            tObjectKind::kObjectKindDirectory
+        } else {
+            tObjectKind::kObjectKindFile
+        };
+        let mName = CString::new(fstat.get_path())?;
+        let mOwner = CString::new(fstat.get_owner())?;
+        let mGroup = CString::new(fstat.get_group())?;
+
+        Ok(hdfsFileInfo {
+            mKind,
+            mName: mName.into_raw(),
+            mLastMod: fstat.get_modification_time() as _,
+            mSize: fstat.get_length() as _,
+            mReplication: fstat.get_block_replication() as _,
+            mBlockSize: fstat.get_blocksize() as _,
+            mOwner: mOwner.into_raw(),
+            mGroup: mGroup.into_raw(),
+            mPermissions: fstat.get_permission().get_perm() as _,
+            mLastAccess: fstat.get_access_time() as _,
+        })
+    }
+}
+
+impl hdfsFileInfo {
+    // We cannot implement Drop for a repr(C) struct; use a manual one.
+    // Technically, it doesn't need to be &mut, but it is.
+    unsafe fn free(&mut self) {
+        CString::from_raw(self.mName);
+        CString::from_raw(self.mOwner);
+        CString::from_raw(self.mGroup);
+    }
 }
 
 #[no_mangle]
@@ -457,13 +501,49 @@ pub extern "C" fn hdfsListDirectory(
 }
 
 #[no_mangle]
-pub extern "C" fn hdfsGetPathInfo(_fs: hdfsFS, _path: c_char) -> *mut hdfsFileInfo {
-    unimplemented!()
+pub extern "C" fn hdfsGetPathInfo(fs: hdfsFS, path: *const c_char) -> *mut hdfsFileInfo {
+    // We have common interface for freeing, thus result of
+    // hdfsListdirectory and hdfsGetPathinfo are to be freed
+    // uniformly.  Thus we allocate a Vec.
+
+    // unsafe as much as input values are correct.
+    let path = unsafe { CStr::from_ptr(path) }.to_str();
+    let fs = unsafe { fs.as_mut() }; // TODO unwrap?  Fail if it is null.
+
+    match (fs, path) {
+        (Some(fs), Ok(path)) => fs
+            .get_file_info(Cow::Borrowed(path))
+            .map(|fstat| {
+                // TODO as we deallocate as Box<[T]>, one can create
+                // it from Box<T> instead of Vec.
+                let mut cont = Vec::with_capacity(1);
+                // TODO check instead of unwrap
+                cont.push(hdfsFileInfo::try_from(&fstat).unwrap());
+
+                let mut sl = cont.into_boxed_slice();
+                let ptr = sl.as_mut_ptr();
+                std::mem::forget(sl);
+                ptr
+            })
+            // TODO the hardest part: handle different errors, set err variables
+            .unwrap_or(null_mut()),
+        // TODO the hardest part: handle different errors, set err variables
+        _ => null_mut(),
+    }
 }
 
 #[no_mangle]
-pub extern "C" fn hdfsFreeFileInfo(_hdfsFileInfo: *mut hdfsFileInfo, _numEntries: c_int) {
-    unimplemented!()
+pub extern "C" fn hdfsFreeFileInfo(hdfsFileInfo: *mut hdfsFileInfo, numEntries: c_int) {
+    // Operation is as safe as input data is.
+    unsafe {
+        let mut data = Box::from_raw(std::slice::from_raw_parts_mut(
+            hdfsFileInfo,
+            numEntries as _,
+        ));
+        for elt in data.iter_mut() {
+            elt.free()
+        }
+    }
 }
 
 #[no_mangle]
