@@ -145,9 +145,9 @@ pub enum RpcError {
 impl RpcError {
     pub fn get_class_name(&self) -> &str {
         match self {
-            RpcError::KnownError{ exception, .. } => exception,
-            RpcError::ErrorResponse{ exception, .. } => exception,
-            RpcError::FatalResponse{ exception, .. } => exception,
+            RpcError::KnownError { exception, .. } => exception,
+            RpcError::ErrorResponse { exception, .. } => exception,
+            RpcError::FatalResponse { exception, .. } => exception,
             _ => "",
         }
     }
@@ -281,7 +281,6 @@ impl HdfsConnection {
                         error_msg: resp_header.take_errorMsg(),
                         error_detail: resp_header.get_errorDetail(),
                         exception: resp_header.take_exceptionClassName(),
-
                     })
                 }
             }

@@ -132,7 +132,9 @@ name = "hdfs"
 version = "0.1.0"
 dependencies = [
  "hdfesse_proto",
+ "libc",
  "libhdfesse",
+ "phf",
 ]
 
 [[package]]

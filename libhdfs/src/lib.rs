@@ -15,7 +15,10 @@
 */
 #![allow(non_snake_case)]
 #![allow(non_camel_case_types)]
+mod errors;
+
 use hdfesse_proto::hdfs::{HdfsFileStatusProto, HdfsFileStatusProto_FileType};
+use libhdfesse::fs;
 
 use std::convert::TryFrom;
 use std::ffi::CString;
@@ -309,12 +312,23 @@ pub unsafe extern "C" fn hdfsExists(fs: hdfsFS, path: *const c_char) -> c_int {
     let fs = fs.as_mut(); // TODO unwrap?  Fail if it is null.
 
     match (fs, path) {
-        (Some(fs), Ok(path)) => fs
-            .get_file_info(Cow::Borrowed(path))
-            .map(|_| 1)
-            .unwrap_or(0),
-        // TODO handle different errors, set err variables
-        _ => -1,
+        (Some(fs), Ok(path)) => match fs.get_file_info(Cow::Borrowed(path)) {
+            Ok(_) => 1,
+            Err(e) => match &e {
+                // set_errno_with_hadoop_error handles it too, but
+                // for this function it is a normal situation.
+                fs::FsError::NotFound(_) => 0,
+                fs::FsError::Rpc(_) => {
+                    errors::set_errno_with_hadoop_error(e);
+                    -1
+                }
+            },
+        },
+        _ => {
+            // TODO seems to be the only option.
+            libc::__errno_location().replace(errors::EINTERNAL);
+            -1
+        }
     }
 }
 
@@ -534,6 +548,7 @@ pub unsafe extern "C" fn hdfsGetPathInfo(fs: hdfsFS, path: *const c_char) -> *mu
     match (fs, path) {
         (Some(fs), Ok(path)) => fs
             .get_file_info(Cow::Borrowed(path))
+            .map_err(errors::set_errno_with_hadoop_error)
             .map(|fstat| {
                 // TODO as we deallocate as Box<[T]>, one can create
                 // it from Box<T> instead of Vec.
