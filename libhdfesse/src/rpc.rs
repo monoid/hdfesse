@@ -120,6 +120,7 @@ pub enum RpcError {
         error_msg: String,
         error_detail: RpcErrorCode,
         exception: String,
+        method: String,
     },
     /// Non-fatal error: you may retry this operation or issue an
     /// another one.
@@ -129,6 +130,7 @@ pub enum RpcError {
         error_msg: String,
         error_detail: RpcErrorCode,
         exception: String,
+        method: String,
     },
     /// Fatal error: you have to close connection and open a new one.
     #[error("fatal error: {:?}: {}", .status, .error_msg)]
@@ -137,6 +139,7 @@ pub enum RpcError {
         error_msg: String,
         error_detail: RpcErrorCode,
         exception: String,
+        method: String,
     },
     #[error("incomplete protobuf record")]
     IncompleteResponse,
@@ -243,7 +246,7 @@ impl HdfsConnection {
         let mut rh = RequestHeaderProto::default();
         rh.set_declaringClassProtocolName(RPC_HDFS_PROTOCOL.to_owned());
         rh.set_clientProtocolVersion(1);
-        rh.set_methodName(method_name.into_owned());
+        rh.set_methodName(method_name.to_string());
 
         let mut pbs = CodedOutputStream::new(&mut self.stream);
 
@@ -274,6 +277,7 @@ impl HdfsConnection {
                         error_msg: resp_header.take_errorMsg(),
                         error_detail: resp_header.get_errorDetail(),
                         exception: resp_header.take_exceptionClassName(),
+                        method: method_name.into_owned(),
                     })
                 } else {
                     Err(RpcError::ErrorResponse {
@@ -281,6 +285,7 @@ impl HdfsConnection {
                         error_msg: resp_header.take_errorMsg(),
                         error_detail: resp_header.get_errorDetail(),
                         exception: resp_header.take_exceptionClassName(),
+                        method: method_name.into_owned(),
                     })
                 }
             }
@@ -289,6 +294,7 @@ impl HdfsConnection {
                 error_msg: resp_header.take_errorMsg(),
                 error_detail: resp_header.get_errorDetail(),
                 exception: resp_header.take_exceptionClassName(),
+                method: method_name.into_owned(),
             }),
         }
     }
