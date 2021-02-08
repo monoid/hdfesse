@@ -293,11 +293,20 @@ pub extern "C" fn hdfsCloseFile(_fs: hdfsFS, _file: hdfsFile) -> c_int {
     unimplemented!()
 }
 
+/**
+
+Return 1 if path exists, 0 if not, negative value on error.
+
+# Safety
+
+fs value should be a value constructed with hdfs*Connect* family of
+functions, and path is a null-terminated C string.
+
+*/
 #[no_mangle]
-pub extern "C" fn hdfsExists(fs: hdfsFS, path: *const c_char) -> c_int {
-    // unsafe as much as input values are correct.
-    let path = unsafe { CStr::from_ptr(path) }.to_str();
-    let fs = unsafe { fs.as_mut() }; // TODO unwrap?  Fail if it is null.
+pub unsafe extern "C" fn hdfsExists(fs: hdfsFS, path: *const c_char) -> c_int {
+    let path = CStr::from_ptr(path).to_str();
+    let fs = fs.as_mut(); // TODO unwrap?  Fail if it is null.
 
     match (fs, path) {
         (Some(fs), Ok(path)) => fs
@@ -500,15 +509,24 @@ pub extern "C" fn hdfsListDirectory(
     unimplemented!()
 }
 
+/**
+
+Return allocated single struct hdfsFileInfo with path info.
+
+# Safety
+
+fs value should be a value constructed with hdfs*Connect* family of
+functions, and path is a null-terminated C string.
+
+*/
 #[no_mangle]
-pub extern "C" fn hdfsGetPathInfo(fs: hdfsFS, path: *const c_char) -> *mut hdfsFileInfo {
+pub unsafe extern "C" fn hdfsGetPathInfo(fs: hdfsFS, path: *const c_char) -> *mut hdfsFileInfo {
     // We have common interface for freeing, thus result of
     // hdfsListdirectory and hdfsGetPathinfo are to be freed
     // uniformly.  Thus we allocate a Vec.
 
-    // unsafe as much as input values are correct.
-    let path = unsafe { CStr::from_ptr(path) }.to_str();
-    let fs = unsafe { fs.as_mut() }; // TODO unwrap?  Fail if it is null.
+    let path = CStr::from_ptr(path).to_str();
+    let fs = fs.as_mut(); // TODO unwrap?  Fail if it is null.
 
     match (fs, path) {
         (Some(fs), Ok(path)) => fs
@@ -532,17 +550,25 @@ pub extern "C" fn hdfsGetPathInfo(fs: hdfsFS, path: *const c_char) -> *mut hdfsF
     }
 }
 
+/**
+
+Deallocates hdfsFileInfo instance.
+
+# Safety
+
+hdfsFileInfo have to be a value returned from hdfsGetPathInfo or
+hdfsListDirectory functions.  For former, numEntries is 1, for latter,
+it is a value put into numEntries pointer.
+
+*/
 #[no_mangle]
-pub extern "C" fn hdfsFreeFileInfo(hdfsFileInfo: *mut hdfsFileInfo, numEntries: c_int) {
-    // Operation is as safe as input data is.
-    unsafe {
-        let mut data = Box::from_raw(std::slice::from_raw_parts_mut(
-            hdfsFileInfo,
-            numEntries as _,
-        ));
-        for elt in data.iter_mut() {
-            elt.free()
-        }
+pub unsafe extern "C" fn hdfsFreeFileInfo(hdfsFileInfo: *mut hdfsFileInfo, numEntries: c_int) {
+    let mut data = Box::from_raw(std::slice::from_raw_parts_mut(
+        hdfsFileInfo,
+        numEntries as _,
+    ));
+    for elt in data.iter_mut() {
+        elt.free()
     }
 }
 
