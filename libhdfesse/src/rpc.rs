@@ -119,6 +119,7 @@ pub enum RpcError {
         kind: RpcErrorKind,
         error_msg: String,
         error_detail: RpcErrorCode,
+        exception: String,
     },
     /// Non-fatal error: you may retry this operation or issue an
     /// another one.
@@ -127,6 +128,7 @@ pub enum RpcError {
         status: RpcStatus,
         error_msg: String,
         error_detail: RpcErrorCode,
+        exception: String,
     },
     /// Fatal error: you have to close connection and open a new one.
     #[error("fatal error: {:?}: {}", .status, .error_msg)]
@@ -134,9 +136,21 @@ pub enum RpcError {
         status: RpcStatus,
         error_msg: String,
         error_detail: RpcErrorCode,
+        exception: String,
     },
     #[error("incomplete protobuf record")]
     IncompleteResponse,
+}
+
+impl RpcError {
+    pub fn get_class_name(&self) -> &str {
+        match self {
+            RpcError::KnownError{ exception, .. } => exception,
+            RpcError::ErrorResponse{ exception, .. } => exception,
+            RpcError::FatalResponse{ exception, .. } => exception,
+            _ => "",
+        }
+    }
 }
 
 pub static ERROR_CLASS_MAP: ::phf::Map<&'static str, RpcErrorKind> = ::phf::phf_map! {
@@ -259,12 +273,15 @@ impl HdfsConnection {
                         kind,
                         error_msg: resp_header.take_errorMsg(),
                         error_detail: resp_header.get_errorDetail(),
+                        exception: resp_header.take_exceptionClassName(),
                     })
                 } else {
                     Err(RpcError::ErrorResponse {
                         status: resp_header.get_status(),
                         error_msg: resp_header.take_errorMsg(),
                         error_detail: resp_header.get_errorDetail(),
+                        exception: resp_header.take_exceptionClassName(),
+
                     })
                 }
             }
@@ -272,6 +289,7 @@ impl HdfsConnection {
                 status: resp_header.get_status(),
                 error_msg: resp_header.take_errorMsg(),
                 error_detail: resp_header.get_errorDetail(),
+                exception: resp_header.take_exceptionClassName(),
             }),
         }
     }
