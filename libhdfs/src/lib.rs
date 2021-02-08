@@ -478,14 +478,17 @@ impl TryFrom<&HdfsFileStatusProto> for hdfsFileInfo {
         Ok(hdfsFileInfo {
             mKind,
             mName: mName.into_raw(),
-            mLastMod: fstat.get_modification_time() as _,
+            mLastMod: (fstat.get_modification_time() / 1000) as _,
             mSize: fstat.get_length() as _,
             mReplication: fstat.get_block_replication() as _,
             mBlockSize: fstat.get_blocksize() as _,
+            // TODO the original libhdfs has an ugly hack: it places
+            // another struct (extInfo just behind the mOwner allocated string.
+            // And extInfo.flags is updated with isEncrypted() flag.
             mOwner: mOwner.into_raw(),
             mGroup: mGroup.into_raw(),
             mPermissions: fstat.get_permission().get_perm() as _,
-            mLastAccess: fstat.get_access_time() as _,
+            mLastAccess: (fstat.get_access_time() / 1000) as _,
         })
     }
 }
