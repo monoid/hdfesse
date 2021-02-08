@@ -87,6 +87,9 @@ pub struct HdfsConnection {
     client_id: Vec<u8>,
 }
 
+pub type RpcStatus = RpcResponseHeaderProto_RpcStatusProto;
+pub type RpcErrorCode = RpcResponseHeaderProto_RpcErrorCodeProto;
+
 #[derive(Debug, Error)]
 pub enum RpcConnectError<CE: std::error::Error + Debug + 'static> {
     #[error(transparent)]
@@ -95,17 +98,50 @@ pub enum RpcConnectError<CE: std::error::Error + Debug + 'static> {
     Rpc(RpcError),
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum RpcErrorKind {
+    Snapshot,
+}
+
 #[derive(Debug, Error)]
 pub enum RpcError {
     #[error(transparent)]
     IO(#[from] io::Error),
     #[error(transparent)]
     Protobuf(#[from] protobuf::ProtobufError),
-    #[error("{:?}:{}: {}", .0.get_status(), .0.get_exceptionClassName(), .0.get_errorMsg())]
-    Response(Box<RpcResponseHeaderProto>),
+    /// Most operation fail silently if you provide incorrect
+    /// arguments; for example, if you list nonexistent directory, you
+    /// will just get an empty list.  But some operations do fail,
+    /// like snapshot-related ones.  This variant is for such errors.
+    #[error("{:?}: {}", .kind, .error_msg)]
+    KnownError {
+        status: RpcStatus,
+        kind: RpcErrorKind,
+        error_msg: String,
+        error_detail: RpcErrorCode,
+    },
+    /// Non-fatal error: you may retry this operation or issue an
+    /// another one.
+    #[error("error: {:?}: {}", .status, .error_msg)]
+    ErrorResponse {
+        status: RpcStatus,
+        error_msg: String,
+        error_detail: RpcErrorCode,
+    },
+    /// Fatal error: you have to close connection and open a new one.
+    #[error("fatal error: {:?}: {}", .status, .error_msg)]
+    FatalResponse {
+        status: RpcStatus,
+        error_msg: String,
+        error_detail: RpcErrorCode,
+    },
     #[error("incomplete protobuf record")]
     IncompleteResponse,
 }
+
+pub static ERROR_CLASS_MAP: ::phf::Map<&'static str, RpcErrorKind> = ::phf::phf_map! {
+    "org/apache/hadoop/hdfs/protocol/SnapshotException" => RpcErrorKind::Snapshot,
+};
 
 impl HdfsConnection {
     /** Connect to HDFS master NameNode, creating a new HdfsConnection.
@@ -208,14 +244,36 @@ impl HdfsConnection {
         let mut pis = CodedInputStream::new(&mut frame);
 
         // Delimited message
-        let resp_header: RpcResponseHeaderProto = pis.read_message()?;
+        let mut resp_header: RpcResponseHeaderProto = pis.read_message()?;
 
-        if resp_header.get_status() != RpcResponseHeaderProto_RpcStatusProto::SUCCESS {
-            return Err(RpcError::Response(Box::new(resp_header)));
+        match resp_header.get_status() {
+            // Delimited message
+            RpcStatus::SUCCESS => Ok(pis.read_message()?),
+            RpcStatus::ERROR => {
+                if let Some(kind) = ERROR_CLASS_MAP
+                    .get(resp_header.get_exceptionClassName())
+                    .copied()
+                {
+                    Err(RpcError::KnownError {
+                        status: resp_header.get_status(),
+                        kind,
+                        error_msg: resp_header.take_errorMsg(),
+                        error_detail: resp_header.get_errorDetail(),
+                    })
+                } else {
+                    Err(RpcError::ErrorResponse {
+                        status: resp_header.get_status(),
+                        error_msg: resp_header.take_errorMsg(),
+                        error_detail: resp_header.get_errorDetail(),
+                    })
+                }
+            }
+            RpcStatus::FATAL => Err(RpcError::FatalResponse {
+                status: resp_header.get_status(),
+                error_msg: resp_header.take_errorMsg(),
+                error_detail: resp_header.get_errorDetail(),
+            }),
         }
-
-        // Delimited message
-        Ok(pis.read_message()?)
     }
 }
 

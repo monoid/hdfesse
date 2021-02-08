@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 hdfesse_proto = { path = "../hdfesse_proto" }
+phf = { version = "0.8", features = ["macros"] }
 protobuf = { version = "2", features = ["with-bytes"] }
 thiserror = "1.0"
 xml-rs = "0.8"
