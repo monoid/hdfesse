@@ -45,6 +45,15 @@ impl HDFS {
             .ok_or_else(|| FsError::NotFound(src.into_owned()))
     }
 
+    // TODO a sketch; one should check that dst exists or doesn't
+    // exist and srcs do exist, etc.
+    pub fn rename(&mut self, src: Cow<str>, dst: Cow<str>) -> Result<(), FsError> {
+        self.service
+            .rename(src.into_owned(), dst.into_owned())
+            .map_err(FsError::Rpc)?;
+        Ok(())
+    }
+
     #[inline]
     pub fn shutdown(self) -> Result<(), FsError> {
         self.service.shutdown().map_err(FsError::Rpc)
