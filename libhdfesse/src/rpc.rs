@@ -78,15 +78,6 @@ impl Default for InfiniteSeq {
     }
 }
 
-/**
- * HDFS connection, i.e. connection to HDFS master NameNode.
- */
-pub struct HdfsConnection {
-    stream: TcpStream,
-    call_id: InfiniteSeq,
-    client_id: Vec<u8>,
-}
-
 pub type RpcStatus = RpcResponseHeaderProto_RpcStatusProto;
 pub type RpcErrorCode = RpcResponseHeaderProto_RpcErrorCodeProto;
 
@@ -161,6 +152,15 @@ pub static ERROR_CLASS_MAP: ::phf::Map<&'static str, RpcErrorKind> = ::phf::phf_
     "org/apache/hadoop/hdfs/protocol/SnapshotException" => RpcErrorKind::Snapshot,
 };
 
+/**
+ * HDFS connection, i.e. connection to HDFS master NameNode.
+ */
+pub struct HdfsConnection {
+    stream: TcpStream,
+    call_id: InfiniteSeq,
+    client_id: Vec<u8>,
+}
+
 impl HdfsConnection {
     /** Connect to HDFS master NameNode, creating a new HdfsConnection.
      */
@@ -200,6 +200,7 @@ impl HdfsConnection {
             hh.set_clientId(self.client_id.clone());
 
             let mut cc = IpcConnectionContextProto::default();
+            // TODO proper user name.
             cc.mut_userInfo().set_effectiveUser("ib".to_owned());
             cc.set_protocol(RPC_HDFS_PROTOCOL.to_owned());
 
@@ -298,6 +299,26 @@ impl HdfsConnection {
                 method: method_name.into_owned(),
             }),
         }
+    }
+
+    /// Send a closing packet to the server.  It should be just
+    /// Drop::drop, but it wouldn't work for the anticipated async
+    /// version.
+    pub fn shutdown(mut self) -> Result<(), RpcError> {
+        let mut hh = RpcRequestHeaderProto::default();
+        hh.set_rpcKind(RpcKindProto::RPC_PROTOCOL_BUFFER);
+        hh.set_rpcOp(RpcRequestHeaderProto_OperationProto::RPC_CLOSE_CONNECTION);
+        hh.set_callId(self.call_id.next());
+        hh.set_retryCount(-1);
+        hh.set_clientId(self.client_id.clone());
+
+        {
+            let mut pbs = CodedOutputStream::new(&mut self.stream);
+            Self::send_message_group(&mut pbs, &[&hh])?;
+            pbs.flush()?;
+        }
+        // the stream will be closed by drop.
+        Ok(())
     }
 }
 

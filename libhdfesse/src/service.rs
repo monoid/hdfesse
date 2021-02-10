@@ -921,4 +921,9 @@ impl ClientNamenodeService {
     ) -> Result<HAServiceStateResponseProto> {
         Ok(self.conn.call(Cow::Borrowed("getHAServiceState"), args)?)
     }
+
+    #[inline]
+    pub fn shutdown(self) -> Result<()> {
+        self.conn.shutdown()
+    }
 }

@@ -44,4 +44,9 @@ impl HDFS {
             .map_err(FsError::Rpc)?
             .ok_or_else(|| FsError::NotFound(src.into_owned()))
     }
+
+    #[inline]
+    pub fn shutdown(self) -> Result<(), FsError> {
+        self.service.shutdown().map_err(FsError::Rpc)
+    }
 }
