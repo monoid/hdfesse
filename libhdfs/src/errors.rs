@@ -1,3 +1,18 @@
+/*
+   Copyright 2021 Ivan Boldyrev
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+*/
 use std::os::raw::c_int;
 
 use libhdfesse::fs;
@@ -31,7 +46,7 @@ pub(crate) fn get_error_code(class_name: &str) -> libc::c_int {
 pub(crate) fn set_errno_with_hadoop_error(e: fs::FsError) -> fs::FsError {
     let the_errno = match &e {
         fs::FsError::NotFound(_) => libc::ENOENT,
-        fs::FsError::Rpc(r) => get_error_code(r.get_class_name()),
+        fs::FsError::Rpc(r) => r.get_class_name().map(get_error_code).unwrap_or(EINTERNAL),
     };
     unsafe { libc::__errno_location().replace(the_errno) };
     e

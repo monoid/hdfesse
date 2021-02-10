@@ -146,12 +146,13 @@ pub enum RpcError {
 }
 
 impl RpcError {
-    pub fn get_class_name(&self) -> &str {
+    #[inline]
+    pub fn get_class_name(&self) -> Option<&str> {
         match self {
-            RpcError::KnownError { exception, .. } => exception,
-            RpcError::ErrorResponse { exception, .. } => exception,
-            RpcError::FatalResponse { exception, .. } => exception,
-            _ => "",
+            RpcError::KnownError { exception, .. } => Some(exception),
+            RpcError::ErrorResponse { exception, .. } => Some(exception),
+            RpcError::FatalResponse { exception, .. } => Some(exception),
+            _ => None,
         }
     }
 }
