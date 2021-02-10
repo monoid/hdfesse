@@ -46,12 +46,15 @@ fn main() -> Result<()> {
     let client =
         libhdfesse::rpc::HdfsConnection::new(opt.namenode, &libhdfesse::rpc::SimpleConnector {})?;
 
-    let mut service = libhdfesse::service::ClientNamenodeService::new(client);
+    let service = libhdfesse::service::ClientNamenodeService::new(client);
+    let mut hdfs = libhdfesse::fs::HDFS::new(service);
 
-    std::process::exit(match opt.subcmd {
+    let retcode = match opt.subcmd {
         TopSubcmd::Dfs(dfs) => match dfs {
-            Dfs::Ls(ls_args) => cli::ls::Ls::new(service).run(ls_args)?,
-            Dfs::Mv(mv_args) => cli::mv::Mv::new(&mut service).run(mv_args)?,
+            Dfs::Ls(ls_args) => cli::ls::Ls::new(&mut hdfs).run(ls_args)?,
+            Dfs::Mv(mv_args) => cli::mv::Mv::new(&mut hdfs).run(mv_args)?,
         },
-    });
+    };
+    hdfs.shutdown()?;
+    std::process::exit(retcode);
 }

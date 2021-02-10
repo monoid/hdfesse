@@ -155,15 +155,13 @@ impl<'a> Iterator for LsGroupIterator<'a> {
     }
 }
 
-pub struct Ls {
-    hdfs: HDFS,
+pub struct Ls<'a> {
+    hdfs: &'a mut HDFS,
 }
 
-impl Ls {
-    pub fn new(service: ClientNamenodeService) -> Self {
-        Self {
-            hdfs: HDFS::new(service),
-        }
+impl<'a> Ls<'a> {
+    pub fn new(hdfs: &'a mut HDFS) -> Self {
+        Self { hdfs }
     }
 
     fn list_dir(&mut self, path: String, args: &LsOpts) -> Result<()> {
@@ -227,7 +225,7 @@ impl Ls {
     }
 }
 
-impl Command for Ls {
+impl<'a> Command for Ls<'a> {
     type Args = LsArgs;
     type Error = LsError;
 

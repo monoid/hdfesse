@@ -13,9 +13,11 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
+use std::borrow::Cow;
+
 use super::Command;
 use anyhow::Result;
-use libhdfesse::service::ClientNamenodeService;
+use libhdfesse::fs::HDFS;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -27,12 +29,12 @@ pub struct MvArgs {
 }
 
 pub struct Mv<'a> {
-    service: &'a mut ClientNamenodeService,
+    hdfs: &'a mut HDFS,
 }
 
 impl<'a> Mv<'a> {
-    pub fn new(service: &'a mut ClientNamenodeService) -> Self {
-        Self { service }
+    pub fn new(hdfs: &'a mut HDFS) -> Self {
+        Self { hdfs }
     }
 }
 
@@ -47,7 +49,8 @@ impl<'a> Command for Mv<'a> {
             // TODO validate that dst exists and is a dir.
         }
         for src in args.srcs {
-            self.service.rename(src, args.dst.clone())?;
+            self.hdfs
+                .rename(Cow::Owned(src), Cow::Borrowed(&args.dst))?;
         }
         Ok(0)
     }
