@@ -23,22 +23,8 @@ use xml::reader::{EventReader, XmlEvent};
 /// "hdfs-site.xml" either from HADOOP_CONF_DIR default variable or
 /// "/etc/hadoop/conf" directory.
 pub fn get_config_path() -> PathBuf {
-    let conf_dir = std::env::var("HADOOP_CONF_DIR");
-    let path = match conf_dir {
-        Ok(dir) => PathBuf::from(dir),
-        Err(std::env::VarError::NotUnicode(raw_string)) => {
-            // It hard to expect invalid Unicode these days, perhaps,
-            // we should jus tfail, but anyway.
-            // TODO warning.
-            PathBuf::from(raw_string)
-        }
-        _ => {
-            // TODO warning: using default path.
-            PathBuf::from("/etc/hadoop/conf".to_owned())
-        }
-    };
-
-    path.join("hdfs-site.xml".to_owned())
+    let conf_dir = std::env::var_os("HADOOP_CONF_DIR").unwrap_or("/etc/hadoop/conf".into());
+    PathBuf::from(conf_dir.to_owned())
 }
 
 #[derive(Debug, Error)]
