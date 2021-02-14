@@ -43,11 +43,11 @@ pub(crate) fn get_error_code(class_name: &str) -> libc::c_int {
     EXCEPTION_INFO.get(class_name).cloned().unwrap_or(EINTERNAL)
 }
 
-pub(crate) fn set_errno_with_hadoop_error(e: fs::FsError) -> fs::FsError {
+pub(crate) unsafe fn set_errno_with_hadoop_error(e: fs::FsError) -> fs::FsError {
     let the_errno = match &e {
         fs::FsError::NotFound(_) => libc::ENOENT,
         fs::FsError::Rpc(r) => r.get_class_name().map(get_error_code).unwrap_or(EINTERNAL),
     };
-    unsafe { libc::__errno_location().replace(the_errno) };
+    libc::__errno_location().replace(the_errno);
     e
 }

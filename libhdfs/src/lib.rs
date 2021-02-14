@@ -314,11 +314,11 @@ pub unsafe extern "C" fn hdfsExists(fs: hdfsFS, path: *const c_char) -> c_int {
     match (fs, path) {
         (Some(fs), Ok(path)) => match fs.get_file_info(Cow::Borrowed(path)) {
             Ok(_) => 1,
-            Err(e) => match &e {
+            Err(e) => match e {
                 // set_errno_with_hadoop_error handles it too, but
                 // for this function it is a normal situation.
                 fs::FsError::NotFound(_) => 0,
-                fs::FsError::Rpc(_) => {
+                _ => {
                     errors::set_errno_with_hadoop_error(e);
                     -1
                 }
@@ -326,7 +326,7 @@ pub unsafe extern "C" fn hdfsExists(fs: hdfsFS, path: *const c_char) -> c_int {
         },
         _ => {
             // TODO seems to be the only option.
-            libc::__errno_location().replace(errors::EINTERNAL);
+            libc::__errno_location().write(errors::EINTERNAL);
             -1
         }
     }
@@ -543,13 +543,11 @@ pub unsafe extern "C" fn hdfsGetPathInfo(fs: hdfsFS, path: *const c_char) -> *mu
     // uniformly.  Thus we allocate a Vec.
 
     let path = CStr::from_ptr(path).to_str();
-    let fs = fs.as_mut(); // TODO unwrap?  Fail if it is null.
+    let fs = fs.as_mut();
 
     match (fs, path) {
-        (Some(fs), Ok(path)) => fs
-            .get_file_info(Cow::Borrowed(path))
-            .map_err(errors::set_errno_with_hadoop_error)
-            .map(|fstat| {
+        (Some(fs), Ok(path)) => match fs.get_file_info(Cow::Borrowed(path)) {
+            Ok(fstat) => {
                 // TODO as we deallocate as Box<[T]>, one can create
                 // it from Box<T> instead of Vec.
                 let mut cont = Vec::with_capacity(1);
@@ -560,11 +558,17 @@ pub unsafe extern "C" fn hdfsGetPathInfo(fs: hdfsFS, path: *const c_char) -> *mu
                 let ptr = sl.as_mut_ptr();
                 std::mem::forget(sl);
                 ptr
-            })
-            // TODO the hardest part: handle different errors, set err variables
-            .unwrap_or(null_mut()),
-        // TODO the hardest part: handle different errors, set err variables
-        _ => null_mut(),
+            }
+            Err(e) => {
+                errors::set_errno_with_hadoop_error(e);
+                null_mut()
+            }
+        }
+        _ => {
+            // it seems this is the most sane value for non-UTF8 strings.
+            libc::__errno_location().write(libc::EINVAL);
+            null_mut()
+        }
     }
 }
 
