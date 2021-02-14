@@ -563,7 +563,7 @@ pub unsafe extern "C" fn hdfsGetPathInfo(fs: hdfsFS, path: *const c_char) -> *mu
                 errors::set_errno_with_hadoop_error(e);
                 null_mut()
             }
-        }
+        },
         _ => {
             // it seems this is the most sane value for non-UTF8 strings.
             libc::__errno_location().write(libc::EINVAL);
