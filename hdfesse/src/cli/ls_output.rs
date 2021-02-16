@@ -13,7 +13,9 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-use hdfesse_proto::hdfs::HdfsFileStatusProto_FileType;
+use hdfesse_proto::hdfs::{
+    HdfsFileStatusProto, HdfsFileStatusProto_FileType, HdfsFileStatusProto_Flags,
+};
 use number_prefix::NumberPrefix;
 use std::borrow::Cow;
 use std::cmp::max;
@@ -63,6 +65,28 @@ pub(crate) struct Record {
     pub(crate) size: u64,
     pub(crate) timestamp: u64,
     pub(crate) path: Box<str>,
+}
+
+impl Record {
+    pub(crate) fn from_hdfs_file_status(mut entry: HdfsFileStatusProto, atime: bool) -> Self {
+        Record {
+            file_type: entry.get_fileType(),
+            perm: entry.get_permission().get_perm(),
+            has_acl: entry.get_flags() & (HdfsFileStatusProto_Flags::HAS_ACL as u32) != 0,
+            replication: entry.get_block_replication(),
+            owner: entry.take_owner().into_boxed_str(),
+            group: entry.take_group().into_boxed_str(),
+            size: entry.get_length(),
+            timestamp: if atime {
+                entry.get_access_time()
+            } else {
+                entry.get_modification_time()
+            },
+            // TODO: move formatting option to formatter.
+            // Record should hold a Vec.
+            path: String::from_utf8_lossy(entry.get_path()).into(),
+        }
+    }
 }
 
 pub(crate) trait FieldFormatter {

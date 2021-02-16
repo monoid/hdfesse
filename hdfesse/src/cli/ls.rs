@@ -18,7 +18,7 @@ use std::{borrow::Cow, cmp::Reverse};
 use super::Command;
 use crate::cli::ls_output::{LineFormat, Record};
 use anyhow::Result;
-use hdfesse_proto::hdfs::{HdfsFileStatusProto, HdfsFileStatusProto_Flags};
+use hdfesse_proto::hdfs::HdfsFileStatusProto;
 use libhdfesse::fs::{FsError, Hdfs};
 use libhdfesse::service::ClientNamenodeService;
 use protobuf::RepeatedField;
@@ -180,38 +180,31 @@ impl<'a> Ls<'a> {
         let mut is_first = true;
         let mut data = Vec::new();
 
-        for group in LsGroupIterator::new(&mut self.hdfs.service, &path) {
-            let (remaining_len, group) = group?;
+        let info = match self.hdfs.service.getFileInfo(path.clone())? {
+            Some(info) => info,
+            None => return Err(FsError::NotFound(path).into()),
+        };
 
-            // Noop for all iterations except the first, unless new file
-            // will appear in process of listing.
-            data.reserve(remaining_len);
+        if args.directory {
+            data.push(Record::from_hdfs_file_status(info, args.atime));
+        } else {
+            for group in LsGroupIterator::new(&mut self.hdfs.service, &path) {
+                let (remaining_len, group) = group?;
 
-            if !args.recursive & is_first {
-                // For first item, remaining_len is the total length.
-                println!("Found {} items", remaining_len);
-                is_first = false;
-            }
+                // Noop for all iterations except the first, unless new file
+                // will appear in process of listing.
+                data.reserve(remaining_len);
 
-            data.extend(group.into_iter().map(|mut entry: HdfsFileStatusProto| {
-                Record {
-                    file_type: entry.get_fileType(),
-                    perm: entry.get_permission().get_perm(),
-                    has_acl: entry.get_flags() & (HdfsFileStatusProto_Flags::HAS_ACL as u32) != 0,
-                    replication: entry.get_block_replication(),
-                    owner: entry.take_owner().into_boxed_str(),
-                    group: entry.take_group().into_boxed_str(),
-                    size: entry.get_length(),
-                    timestamp: if args.atime {
-                        entry.get_access_time()
-                    } else {
-                        entry.get_modification_time()
-                    },
-                    // TODO: move formatting option to formatter.
-                    // Record should hold a Vec.
-                    path: String::from_utf8_lossy(entry.get_path()).into(),
+                if !args.recursive & is_first {
+                    // For first item, remaining_len is the total length.
+                    println!("Found {} items", remaining_len);
+                    is_first = false;
                 }
-            }));
+
+                data.extend(group.into_iter().map(|entry: HdfsFileStatusProto| {
+                    Record::from_hdfs_file_status(entry, args.atime)
+                }));
+            }
         }
 
         if args.sort_mtime {
