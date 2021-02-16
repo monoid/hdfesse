@@ -234,7 +234,7 @@ impl DateFormatter {
             // We don't need the millisecond part
             0,
         );
-        let time_tz = chrono::DateTime::<chrono::Local>::from_utc(time, self.tz_offset.clone());
+        let time_tz = chrono::DateTime::<chrono::Local>::from_utc(time, self.tz_offset);
 
         time_tz.format("%Y-%m-%d %H:%M").to_string()
     }

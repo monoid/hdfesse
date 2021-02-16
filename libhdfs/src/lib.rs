@@ -50,7 +50,6 @@ pub enum tObjectKind {
 }
 
 // TODO make these types distinct
-#[allow(clippy::upper_case_acronyms)]
 pub type hdfsFS = *mut libhdfesse::fs::Hdfs;
 pub type hdfsBuilder = c_void;
 pub type hdfsStreamBuilder = c_void;
