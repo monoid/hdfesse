@@ -550,9 +550,8 @@ pub unsafe extern "C" fn hdfsGetPathInfo(fs: hdfsFS, path: *const c_char) -> *mu
             Ok(fstat) => {
                 // TODO as we deallocate as Box<[T]>, one can create
                 // it from Box<T> instead of Vec.
-                let mut cont = Vec::with_capacity(1);
                 // TODO check instead of unwrap
-                cont.push(hdfsFileInfo::try_from(&fstat).unwrap());
+                let cont = vec!(hdfsFileInfo::try_from(&fstat).unwrap());
 
                 let mut sl = cont.into_boxed_slice();
                 let ptr = sl.as_mut_ptr();

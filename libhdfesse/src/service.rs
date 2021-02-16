@@ -55,7 +55,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &GetBlockLocationsRequestProto,
     ) -> Result<GetBlockLocationsResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("getBlockLocations"), args)?)
+        self.conn.call(Cow::Borrowed("getBlockLocations"), args)
     }
 
     #[allow(non_snake_case)]
@@ -63,17 +63,17 @@ impl ClientNamenodeService {
         &mut self,
         args: &GetServerDefaultsRequestProto,
     ) -> Result<GetServerDefaultsResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("getServerDefaults"), args)?)
+        self.conn.call(Cow::Borrowed("getServerDefaults"), args)
     }
 
     #[allow(non_snake_case)]
     pub fn create(&mut self, args: &CreateRequestProto) -> Result<CreateResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("create"), args)?)
+        self.conn.call(Cow::Borrowed("create"), args)
     }
 
     #[allow(non_snake_case)]
     pub fn append(&mut self, args: &AppendRequestProto) -> Result<AppendResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("append"), args)?)
+        self.conn.call(Cow::Borrowed("append"), args)
     }
 
     #[allow(non_snake_case)]
@@ -81,7 +81,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &SetReplicationRequestProto,
     ) -> Result<SetReplicationResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("setReplication"), args)?)
+        self.conn.call(Cow::Borrowed("setReplication"), args)
     }
 
     #[allow(non_snake_case)]
@@ -89,7 +89,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &SetStoragePolicyRequestProto,
     ) -> Result<SetStoragePolicyResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("setStoragePolicy"), args)?)
+        self.conn.call(Cow::Borrowed("setStoragePolicy"), args)
     }
 
     #[allow(non_snake_case)]
@@ -97,7 +97,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &UnsetStoragePolicyRequestProto,
     ) -> Result<UnsetStoragePolicyResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("unsetStoragePolicy"), args)?)
+        self.conn.call(Cow::Borrowed("unsetStoragePolicy"), args)
     }
 
     #[allow(non_snake_case)]
@@ -105,7 +105,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &GetStoragePolicyRequestProto,
     ) -> Result<GetStoragePolicyResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("getStoragePolicy"), args)?)
+        self.conn.call(Cow::Borrowed("getStoragePolicy"), args)
     }
 
     #[allow(non_snake_case)]
@@ -113,7 +113,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &GetStoragePoliciesRequestProto,
     ) -> Result<GetStoragePoliciesResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("getStoragePolicies"), args)?)
+        self.conn.call(Cow::Borrowed("getStoragePolicies"), args)
     }
 
     #[allow(non_snake_case)]
@@ -121,12 +121,12 @@ impl ClientNamenodeService {
         &mut self,
         args: &SetPermissionRequestProto,
     ) -> Result<SetPermissionResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("setPermission"), args)?)
+        self.conn.call(Cow::Borrowed("setPermission"), args)
     }
 
     #[allow(non_snake_case)]
     pub fn setOwner(&mut self, args: &SetOwnerRequestProto) -> Result<SetOwnerResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("setOwner"), args)?)
+        self.conn.call(Cow::Borrowed("setOwner"), args)
     }
 
     #[allow(non_snake_case)]
@@ -134,12 +134,12 @@ impl ClientNamenodeService {
         &mut self,
         args: &AbandonBlockRequestProto,
     ) -> Result<AbandonBlockResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("abandonBlock"), args)?)
+        self.conn.call(Cow::Borrowed("abandonBlock"), args)
     }
 
     #[allow(non_snake_case)]
     pub fn addBlock(&mut self, args: &AddBlockRequestProto) -> Result<AddBlockResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("addBlock"), args)?)
+        self.conn.call(Cow::Borrowed("addBlock"), args)
     }
 
     #[allow(non_snake_case)]
@@ -147,14 +147,12 @@ impl ClientNamenodeService {
         &mut self,
         args: &GetAdditionalDatanodeRequestProto,
     ) -> Result<GetAdditionalDatanodeResponseProto> {
-        Ok(self
-            .conn
-            .call(Cow::Borrowed("getAdditionalDatanode"), args)?)
+        self.conn.call(Cow::Borrowed("getAdditionalDatanode"), args)
     }
 
     #[allow(non_snake_case)]
     pub fn complete(&mut self, args: &CompleteRequestProto) -> Result<CompleteResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("complete"), args)?)
+        self.conn.call(Cow::Borrowed("complete"), args)
     }
 
     #[allow(non_snake_case)]
@@ -162,17 +160,17 @@ impl ClientNamenodeService {
         &mut self,
         args: &ReportBadBlocksRequestProto,
     ) -> Result<ReportBadBlocksResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("reportBadBlocks"), args)?)
+        self.conn.call(Cow::Borrowed("reportBadBlocks"), args)
     }
 
     #[allow(non_snake_case)]
     pub fn concat(&mut self, args: &ConcatRequestProto) -> Result<ConcatResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("concat"), args)?)
+        self.conn.call(Cow::Borrowed("concat"), args)
     }
 
     #[allow(non_snake_case)]
     pub fn truncate(&mut self, args: &TruncateRequestProto) -> Result<TruncateResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("truncate"), args)?)
+        self.conn.call(Cow::Borrowed("truncate"), args)
     }
 
     #[allow(non_snake_case)]
@@ -181,27 +179,27 @@ impl ClientNamenodeService {
         args.set_src(src);
         args.set_dst(dst);
 
-        Ok(self.conn.call(Cow::Borrowed("rename"), &args)?)
+        self.conn.call(Cow::Borrowed("rename"), &args)
     }
 
     #[allow(non_snake_case)]
     pub fn rename2(&mut self, args: &Rename2RequestProto) -> Result<Rename2ResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("rename2"), args)?)
+        self.conn.call(Cow::Borrowed("rename2"), args)
     }
 
     #[allow(non_snake_case)]
     pub fn delete(&mut self, args: &DeleteRequestProto) -> Result<DeleteResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("delete"), args)?)
+        self.conn.call(Cow::Borrowed("delete"), args)
     }
 
     #[allow(non_snake_case)]
     pub fn mkdirs(&mut self, args: &MkdirsRequestProto) -> Result<MkdirsResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("mkdirs"), args)?)
+        self.conn.call(Cow::Borrowed("mkdirs"), args)
     }
 
     // #[allow(non_snake_case)]
     // pub fn getListing(&mut self, args: &GetListingRequestProto) -> Result<GetListingResponseProto> {
-    //     Ok(self.conn.call(Cow::Borrowed("getListing"), args)?)
+    //     self.conn.call(Cow::Borrowed("getListing"), args)
     // }
 
     #[allow(non_snake_case)]
@@ -209,12 +207,12 @@ impl ClientNamenodeService {
         &mut self,
         args: &GetBatchedListingRequestProto,
     ) -> Result<GetBatchedListingResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("getBatchedListing"), args)?)
+        self.conn.call(Cow::Borrowed("getBatchedListing"), args)
     }
 
     #[allow(non_snake_case)]
     pub fn renewLease(&mut self, args: &RenewLeaseRequestProto) -> Result<RenewLeaseResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("renewLease"), args)?)
+        self.conn.call(Cow::Borrowed("renewLease"), args)
     }
 
     #[allow(non_snake_case)]
@@ -222,7 +220,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &RecoverLeaseRequestProto,
     ) -> Result<RecoverLeaseResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("recoverLease"), args)?)
+        self.conn.call(Cow::Borrowed("recoverLease"), args)
     }
 
     #[allow(non_snake_case)]
@@ -230,7 +228,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &GetFsStatusRequestProto,
     ) -> Result<GetFsStatsResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("getFsStats"), args)?)
+        self.conn.call(Cow::Borrowed("getFsStats"), args)
     }
 
     #[allow(non_snake_case)]
@@ -238,9 +236,8 @@ impl ClientNamenodeService {
         &mut self,
         args: &GetFsReplicatedBlockStatsRequestProto,
     ) -> Result<GetFsReplicatedBlockStatsResponseProto> {
-        Ok(self
-            .conn
-            .call(Cow::Borrowed("getFsReplicatedBlockStats"), args)?)
+        self.conn
+            .call(Cow::Borrowed("getFsReplicatedBlockStats"), args)
     }
 
     #[allow(non_snake_case)]
@@ -248,9 +245,8 @@ impl ClientNamenodeService {
         &mut self,
         args: &GetFsECBlockGroupStatsRequestProto,
     ) -> Result<GetFsECBlockGroupStatsResponseProto> {
-        Ok(self
-            .conn
-            .call(Cow::Borrowed("getFsECBlockGroupStats"), args)?)
+        self.conn
+            .call(Cow::Borrowed("getFsECBlockGroupStats"), args)
     }
 
     #[allow(non_snake_case)]
@@ -258,7 +254,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &GetDatanodeReportRequestProto,
     ) -> Result<GetDatanodeReportResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("getDatanodeReport"), args)?)
+        self.conn.call(Cow::Borrowed("getDatanodeReport"), args)
     }
 
     #[allow(non_snake_case)]
@@ -266,9 +262,8 @@ impl ClientNamenodeService {
         &mut self,
         args: &GetDatanodeStorageReportRequestProto,
     ) -> Result<GetDatanodeStorageReportResponseProto> {
-        Ok(self
-            .conn
-            .call(Cow::Borrowed("getDatanodeStorageReport"), args)?)
+        self.conn
+            .call(Cow::Borrowed("getDatanodeStorageReport"), args)
     }
 
     #[allow(non_snake_case)]
@@ -276,9 +271,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &GetPreferredBlockSizeRequestProto,
     ) -> Result<GetPreferredBlockSizeResponseProto> {
-        Ok(self
-            .conn
-            .call(Cow::Borrowed("getPreferredBlockSize"), args)?)
+        self.conn.call(Cow::Borrowed("getPreferredBlockSize"), args)
     }
 
     #[allow(non_snake_case)]
@@ -286,7 +279,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &SetSafeModeRequestProto,
     ) -> Result<SetSafeModeResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("setSafeMode"), args)?)
+        self.conn.call(Cow::Borrowed("setSafeMode"), args)
     }
 
     #[allow(non_snake_case)]
@@ -294,12 +287,12 @@ impl ClientNamenodeService {
         &mut self,
         args: &SaveNamespaceRequestProto,
     ) -> Result<SaveNamespaceResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("saveNamespace"), args)?)
+        self.conn.call(Cow::Borrowed("saveNamespace"), args)
     }
 
     #[allow(non_snake_case)]
     pub fn rollEdits(&mut self, args: &RollEditsRequestProto) -> Result<RollEditsResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("rollEdits"), args)?)
+        self.conn.call(Cow::Borrowed("rollEdits"), args)
     }
 
     #[allow(non_snake_case)]
@@ -307,9 +300,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &RestoreFailedStorageRequestProto,
     ) -> Result<RestoreFailedStorageResponseProto> {
-        Ok(self
-            .conn
-            .call(Cow::Borrowed("restoreFailedStorage"), args)?)
+        self.conn.call(Cow::Borrowed("restoreFailedStorage"), args)
     }
 
     #[allow(non_snake_case)]
@@ -317,7 +308,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &RefreshNodesRequestProto,
     ) -> Result<RefreshNodesResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("refreshNodes"), args)?)
+        self.conn.call(Cow::Borrowed("refreshNodes"), args)
     }
 
     #[allow(non_snake_case)]
@@ -325,7 +316,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &FinalizeUpgradeRequestProto,
     ) -> Result<FinalizeUpgradeResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("finalizeUpgrade"), args)?)
+        self.conn.call(Cow::Borrowed("finalizeUpgrade"), args)
     }
 
     #[allow(non_snake_case)]
@@ -333,7 +324,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &UpgradeStatusRequestProto,
     ) -> Result<UpgradeStatusResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("upgradeStatus"), args)?)
+        self.conn.call(Cow::Borrowed("upgradeStatus"), args)
     }
 
     #[allow(non_snake_case)]
@@ -341,7 +332,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &RollingUpgradeRequestProto,
     ) -> Result<RollingUpgradeResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("rollingUpgrade"), args)?)
+        self.conn.call(Cow::Borrowed("rollingUpgrade"), args)
     }
 
     #[allow(non_snake_case)]
@@ -349,14 +340,12 @@ impl ClientNamenodeService {
         &mut self,
         args: &ListCorruptFileBlocksRequestProto,
     ) -> Result<ListCorruptFileBlocksResponseProto> {
-        Ok(self
-            .conn
-            .call(Cow::Borrowed("listCorruptFileBlocks"), args)?)
+        self.conn.call(Cow::Borrowed("listCorruptFileBlocks"), args)
     }
 
     #[allow(non_snake_case)]
     pub fn metaSave(&mut self, args: &MetaSaveRequestProto) -> Result<MetaSaveResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("metaSave"), args)?)
+        self.conn.call(Cow::Borrowed("metaSave"), args)
     }
 
     #[allow(non_snake_case)]
@@ -377,7 +366,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &GetLocatedFileInfoRequestProto,
     ) -> Result<GetLocatedFileInfoResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("getLocatedFileInfo"), args)?)
+        self.conn.call(Cow::Borrowed("getLocatedFileInfo"), args)
     }
 
     #[allow(non_snake_case)]
@@ -385,7 +374,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &AddCacheDirectiveRequestProto,
     ) -> Result<AddCacheDirectiveResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("addCacheDirective"), args)?)
+        self.conn.call(Cow::Borrowed("addCacheDirective"), args)
     }
 
     #[allow(non_snake_case)]
@@ -393,9 +382,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &ModifyCacheDirectiveRequestProto,
     ) -> Result<ModifyCacheDirectiveResponseProto> {
-        Ok(self
-            .conn
-            .call(Cow::Borrowed("modifyCacheDirective"), args)?)
+        self.conn.call(Cow::Borrowed("modifyCacheDirective"), args)
     }
 
     #[allow(non_snake_case)]
@@ -403,9 +390,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &RemoveCacheDirectiveRequestProto,
     ) -> Result<RemoveCacheDirectiveResponseProto> {
-        Ok(self
-            .conn
-            .call(Cow::Borrowed("removeCacheDirective"), args)?)
+        self.conn.call(Cow::Borrowed("removeCacheDirective"), args)
     }
 
     #[allow(non_snake_case)]
@@ -413,7 +398,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &ListCacheDirectivesRequestProto,
     ) -> Result<ListCacheDirectivesResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("listCacheDirectives"), args)?)
+        self.conn.call(Cow::Borrowed("listCacheDirectives"), args)
     }
 
     #[allow(non_snake_case)]
@@ -421,7 +406,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &AddCachePoolRequestProto,
     ) -> Result<AddCachePoolResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("addCachePool"), args)?)
+        self.conn.call(Cow::Borrowed("addCachePool"), args)
     }
 
     #[allow(non_snake_case)]
@@ -429,7 +414,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &ModifyCachePoolRequestProto,
     ) -> Result<ModifyCachePoolResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("modifyCachePool"), args)?)
+        self.conn.call(Cow::Borrowed("modifyCachePool"), args)
     }
 
     #[allow(non_snake_case)]
@@ -437,7 +422,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &RemoveCachePoolRequestProto,
     ) -> Result<RemoveCachePoolResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("removeCachePool"), args)?)
+        self.conn.call(Cow::Borrowed("removeCachePool"), args)
     }
 
     #[allow(non_snake_case)]
@@ -445,7 +430,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &ListCachePoolsRequestProto,
     ) -> Result<ListCachePoolsResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("listCachePools"), args)?)
+        self.conn.call(Cow::Borrowed("listCachePools"), args)
     }
 
     #[allow(non_snake_case)]
@@ -453,7 +438,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &GetFileLinkInfoRequestProto,
     ) -> Result<GetFileLinkInfoResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("getFileLinkInfo"), args)?)
+        self.conn.call(Cow::Borrowed("getFileLinkInfo"), args)
     }
 
     #[allow(non_snake_case)]
@@ -461,22 +446,22 @@ impl ClientNamenodeService {
         &mut self,
         args: &GetContentSummaryRequestProto,
     ) -> Result<GetContentSummaryResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("getContentSummary"), args)?)
+        self.conn.call(Cow::Borrowed("getContentSummary"), args)
     }
 
     #[allow(non_snake_case)]
     pub fn setQuota(&mut self, args: &SetQuotaRequestProto) -> Result<SetQuotaResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("setQuota"), args)?)
+        self.conn.call(Cow::Borrowed("setQuota"), args)
     }
 
     #[allow(non_snake_case)]
     pub fn fsync(&mut self, args: &FsyncRequestProto) -> Result<FsyncResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("fsync"), args)?)
+        self.conn.call(Cow::Borrowed("fsync"), args)
     }
 
     #[allow(non_snake_case)]
     pub fn setTimes(&mut self, args: &SetTimesRequestProto) -> Result<SetTimesResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("setTimes"), args)?)
+        self.conn.call(Cow::Borrowed("setTimes"), args)
     }
 
     #[allow(non_snake_case)]
@@ -484,7 +469,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &CreateSymlinkRequestProto,
     ) -> Result<CreateSymlinkResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("createSymlink"), args)?)
+        self.conn.call(Cow::Borrowed("createSymlink"), args)
     }
 
     #[allow(non_snake_case)]
@@ -492,7 +477,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &GetLinkTargetRequestProto,
     ) -> Result<GetLinkTargetResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("getLinkTarget"), args)?)
+        self.conn.call(Cow::Borrowed("getLinkTarget"), args)
     }
 
     #[allow(non_snake_case)]
@@ -500,9 +485,8 @@ impl ClientNamenodeService {
         &mut self,
         args: &UpdateBlockForPipelineRequestProto,
     ) -> Result<UpdateBlockForPipelineResponseProto> {
-        Ok(self
-            .conn
-            .call(Cow::Borrowed("updateBlockForPipeline"), args)?)
+        self.conn
+            .call(Cow::Borrowed("updateBlockForPipeline"), args)
     }
 
     #[allow(non_snake_case)]
@@ -510,7 +494,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &UpdatePipelineRequestProto,
     ) -> Result<UpdatePipelineResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("updatePipeline"), args)?)
+        self.conn.call(Cow::Borrowed("updatePipeline"), args)
     }
 
     #[allow(non_snake_case)]
@@ -518,7 +502,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &GetDelegationTokenRequestProto,
     ) -> Result<GetDelegationTokenResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("getDelegationToken"), args)?)
+        self.conn.call(Cow::Borrowed("getDelegationToken"), args)
     }
 
     #[allow(non_snake_case)]
@@ -526,9 +510,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &RenewDelegationTokenRequestProto,
     ) -> Result<RenewDelegationTokenResponseProto> {
-        Ok(self
-            .conn
-            .call(Cow::Borrowed("renewDelegationToken"), args)?)
+        self.conn.call(Cow::Borrowed("renewDelegationToken"), args)
     }
 
     #[allow(non_snake_case)]
@@ -536,9 +518,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &CancelDelegationTokenRequestProto,
     ) -> Result<CancelDelegationTokenResponseProto> {
-        Ok(self
-            .conn
-            .call(Cow::Borrowed("cancelDelegationToken"), args)?)
+        self.conn.call(Cow::Borrowed("cancelDelegationToken"), args)
     }
 
     #[allow(non_snake_case)]
@@ -546,9 +526,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &SetBalancerBandwidthRequestProto,
     ) -> Result<SetBalancerBandwidthResponseProto> {
-        Ok(self
-            .conn
-            .call(Cow::Borrowed("setBalancerBandwidth"), args)?)
+        self.conn.call(Cow::Borrowed("setBalancerBandwidth"), args)
     }
 
     #[allow(non_snake_case)]
@@ -556,9 +534,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &GetDataEncryptionKeyRequestProto,
     ) -> Result<GetDataEncryptionKeyResponseProto> {
-        Ok(self
-            .conn
-            .call(Cow::Borrowed("getDataEncryptionKey"), args)?)
+        self.conn.call(Cow::Borrowed("getDataEncryptionKey"), args)
     }
 
     #[allow(non_snake_case)]
@@ -566,7 +542,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &CreateSnapshotRequestProto,
     ) -> Result<CreateSnapshotResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("createSnapshot"), args)?)
+        self.conn.call(Cow::Borrowed("createSnapshot"), args)
     }
 
     #[allow(non_snake_case)]
@@ -574,7 +550,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &RenameSnapshotRequestProto,
     ) -> Result<RenameSnapshotResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("renameSnapshot"), args)?)
+        self.conn.call(Cow::Borrowed("renameSnapshot"), args)
     }
 
     #[allow(non_snake_case)]
@@ -582,7 +558,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &AllowSnapshotRequestProto,
     ) -> Result<AllowSnapshotResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("allowSnapshot"), args)?)
+        self.conn.call(Cow::Borrowed("allowSnapshot"), args)
     }
 
     #[allow(non_snake_case)]
@@ -590,7 +566,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &DisallowSnapshotRequestProto,
     ) -> Result<DisallowSnapshotResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("disallowSnapshot"), args)?)
+        self.conn.call(Cow::Borrowed("disallowSnapshot"), args)
     }
 
     #[allow(non_snake_case)]
@@ -598,9 +574,8 @@ impl ClientNamenodeService {
         &mut self,
         args: &GetSnapshottableDirListingRequestProto,
     ) -> Result<GetSnapshottableDirListingResponseProto> {
-        Ok(self
-            .conn
-            .call(Cow::Borrowed("getSnapshottableDirListing"), args)?)
+        self.conn
+            .call(Cow::Borrowed("getSnapshottableDirListing"), args)
     }
 
     #[allow(non_snake_case)]
@@ -608,7 +583,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &GetSnapshotListingRequestProto,
     ) -> Result<GetSnapshotListingResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("getSnapshotListing"), args)?)
+        self.conn.call(Cow::Borrowed("getSnapshotListing"), args)
     }
 
     #[allow(non_snake_case)]
@@ -616,7 +591,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &DeleteSnapshotRequestProto,
     ) -> Result<DeleteSnapshotResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("deleteSnapshot"), args)?)
+        self.conn.call(Cow::Borrowed("deleteSnapshot"), args)
     }
 
     #[allow(non_snake_case)]
@@ -624,9 +599,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &GetSnapshotDiffReportRequestProto,
     ) -> Result<GetSnapshotDiffReportResponseProto> {
-        Ok(self
-            .conn
-            .call(Cow::Borrowed("getSnapshotDiffReport"), args)?)
+        self.conn.call(Cow::Borrowed("getSnapshotDiffReport"), args)
     }
 
     #[allow(non_snake_case)]
@@ -634,9 +607,8 @@ impl ClientNamenodeService {
         &mut self,
         args: &GetSnapshotDiffReportListingRequestProto,
     ) -> Result<GetSnapshotDiffReportListingResponseProto> {
-        Ok(self
-            .conn
-            .call(Cow::Borrowed("getSnapshotDiffReportListing"), args)?)
+        self.conn
+            .call(Cow::Borrowed("getSnapshotDiffReportListing"), args)
     }
 
     #[allow(non_snake_case)]
@@ -644,7 +616,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &IsFileClosedRequestProto,
     ) -> Result<IsFileClosedResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("isFileClosed"), args)?)
+        self.conn.call(Cow::Borrowed("isFileClosed"), args)
     }
 
     #[allow(non_snake_case)]
@@ -652,7 +624,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &ModifyAclEntriesRequestProto,
     ) -> Result<ModifyAclEntriesResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("modifyAclEntries"), args)?)
+        self.conn.call(Cow::Borrowed("modifyAclEntries"), args)
     }
 
     #[allow(non_snake_case)]
@@ -660,7 +632,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &RemoveAclEntriesRequestProto,
     ) -> Result<RemoveAclEntriesResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("removeAclEntries"), args)?)
+        self.conn.call(Cow::Borrowed("removeAclEntries"), args)
     }
 
     #[allow(non_snake_case)]
@@ -668,17 +640,17 @@ impl ClientNamenodeService {
         &mut self,
         args: &RemoveDefaultAclRequestProto,
     ) -> Result<RemoveDefaultAclResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("removeDefaultAcl"), args)?)
+        self.conn.call(Cow::Borrowed("removeDefaultAcl"), args)
     }
 
     #[allow(non_snake_case)]
     pub fn removeAcl(&mut self, args: &RemoveAclRequestProto) -> Result<RemoveAclResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("removeAcl"), args)?)
+        self.conn.call(Cow::Borrowed("removeAcl"), args)
     }
 
     #[allow(non_snake_case)]
     pub fn setAcl(&mut self, args: &SetAclRequestProto) -> Result<SetAclResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("setAcl"), args)?)
+        self.conn.call(Cow::Borrowed("setAcl"), args)
     }
 
     #[allow(non_snake_case)]
@@ -686,22 +658,22 @@ impl ClientNamenodeService {
         &mut self,
         args: &GetAclStatusRequestProto,
     ) -> Result<GetAclStatusResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("getAclStatus"), args)?)
+        self.conn.call(Cow::Borrowed("getAclStatus"), args)
     }
 
     #[allow(non_snake_case)]
     pub fn setXAttr(&mut self, args: &SetXAttrRequestProto) -> Result<SetXAttrResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("setXAttr"), args)?)
+        self.conn.call(Cow::Borrowed("setXAttr"), args)
     }
 
     #[allow(non_snake_case)]
     pub fn getXAttrs(&mut self, args: &GetXAttrsRequestProto) -> Result<GetXAttrsResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("getXAttrs"), args)?)
+        self.conn.call(Cow::Borrowed("getXAttrs"), args)
     }
 
     #[allow(non_snake_case)]
     pub fn listXAttrs(&mut self, args: &ListXAttrsRequestProto) -> Result<ListXAttrsResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("listXAttrs"), args)?)
+        self.conn.call(Cow::Borrowed("listXAttrs"), args)
     }
 
     #[allow(non_snake_case)]
@@ -709,7 +681,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &RemoveXAttrRequestProto,
     ) -> Result<RemoveXAttrResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("removeXAttr"), args)?)
+        self.conn.call(Cow::Borrowed("removeXAttr"), args)
     }
 
     #[allow(non_snake_case)]
@@ -717,7 +689,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &CheckAccessRequestProto,
     ) -> Result<CheckAccessResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("checkAccess"), args)?)
+        self.conn.call(Cow::Borrowed("checkAccess"), args)
     }
 
     #[allow(non_snake_case)]
@@ -725,9 +697,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &CreateEncryptionZoneRequestProto,
     ) -> Result<CreateEncryptionZoneResponseProto> {
-        Ok(self
-            .conn
-            .call(Cow::Borrowed("createEncryptionZone"), args)?)
+        self.conn.call(Cow::Borrowed("createEncryptionZone"), args)
     }
 
     #[allow(non_snake_case)]
@@ -735,7 +705,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &ListEncryptionZonesRequestProto,
     ) -> Result<ListEncryptionZonesResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("listEncryptionZones"), args)?)
+        self.conn.call(Cow::Borrowed("listEncryptionZones"), args)
     }
 
     #[allow(non_snake_case)]
@@ -743,9 +713,8 @@ impl ClientNamenodeService {
         &mut self,
         args: &ReencryptEncryptionZoneRequestProto,
     ) -> Result<ReencryptEncryptionZoneResponseProto> {
-        Ok(self
-            .conn
-            .call(Cow::Borrowed("reencryptEncryptionZone"), args)?)
+        self.conn
+            .call(Cow::Borrowed("reencryptEncryptionZone"), args)
     }
 
     #[allow(non_snake_case)]
@@ -753,9 +722,8 @@ impl ClientNamenodeService {
         &mut self,
         args: &ListReencryptionStatusRequestProto,
     ) -> Result<ListReencryptionStatusResponseProto> {
-        Ok(self
-            .conn
-            .call(Cow::Borrowed("listReencryptionStatus"), args)?)
+        self.conn
+            .call(Cow::Borrowed("listReencryptionStatus"), args)
     }
 
     #[allow(non_snake_case)]
@@ -763,7 +731,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &GetEZForPathRequestProto,
     ) -> Result<GetEZForPathResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("getEZForPath"), args)?)
+        self.conn.call(Cow::Borrowed("getEZForPath"), args)
     }
 
     #[allow(non_snake_case)]
@@ -771,9 +739,8 @@ impl ClientNamenodeService {
         &mut self,
         args: &SetErasureCodingPolicyRequestProto,
     ) -> Result<SetErasureCodingPolicyResponseProto> {
-        Ok(self
-            .conn
-            .call(Cow::Borrowed("setErasureCodingPolicy"), args)?)
+        self.conn
+            .call(Cow::Borrowed("setErasureCodingPolicy"), args)
     }
 
     #[allow(non_snake_case)]
@@ -781,9 +748,8 @@ impl ClientNamenodeService {
         &mut self,
         args: &UnsetErasureCodingPolicyRequestProto,
     ) -> Result<UnsetErasureCodingPolicyResponseProto> {
-        Ok(self
-            .conn
-            .call(Cow::Borrowed("unsetErasureCodingPolicy"), args)?)
+        self.conn
+            .call(Cow::Borrowed("unsetErasureCodingPolicy"), args)
     }
 
     #[allow(non_snake_case)]
@@ -791,9 +757,8 @@ impl ClientNamenodeService {
         &mut self,
         args: &GetECTopologyResultForPoliciesRequestProto,
     ) -> Result<GetECTopologyResultForPoliciesResponseProto> {
-        Ok(self
-            .conn
-            .call(Cow::Borrowed("getECTopologyResultForPolicies"), args)?)
+        self.conn
+            .call(Cow::Borrowed("getECTopologyResultForPolicies"), args)
     }
 
     #[allow(non_snake_case)]
@@ -801,9 +766,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &GetCurrentEditLogTxidRequestProto,
     ) -> Result<GetCurrentEditLogTxidResponseProto> {
-        Ok(self
-            .conn
-            .call(Cow::Borrowed("getCurrentEditLogTxid"), args)?)
+        self.conn.call(Cow::Borrowed("getCurrentEditLogTxid"), args)
     }
 
     #[allow(non_snake_case)]
@@ -811,7 +774,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &GetEditsFromTxidRequestProto,
     ) -> Result<GetEditsFromTxidResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("getEditsFromTxid"), args)?)
+        self.conn.call(Cow::Borrowed("getEditsFromTxid"), args)
     }
 
     #[allow(non_snake_case)]
@@ -819,9 +782,8 @@ impl ClientNamenodeService {
         &mut self,
         args: &GetErasureCodingPoliciesRequestProto,
     ) -> Result<GetErasureCodingPoliciesResponseProto> {
-        Ok(self
-            .conn
-            .call(Cow::Borrowed("getErasureCodingPolicies"), args)?)
+        self.conn
+            .call(Cow::Borrowed("getErasureCodingPolicies"), args)
     }
 
     #[allow(non_snake_case)]
@@ -829,9 +791,8 @@ impl ClientNamenodeService {
         &mut self,
         args: &AddErasureCodingPoliciesRequestProto,
     ) -> Result<AddErasureCodingPoliciesResponseProto> {
-        Ok(self
-            .conn
-            .call(Cow::Borrowed("addErasureCodingPolicies"), args)?)
+        self.conn
+            .call(Cow::Borrowed("addErasureCodingPolicies"), args)
     }
 
     #[allow(non_snake_case)]
@@ -839,9 +800,8 @@ impl ClientNamenodeService {
         &mut self,
         args: &RemoveErasureCodingPolicyRequestProto,
     ) -> Result<RemoveErasureCodingPolicyResponseProto> {
-        Ok(self
-            .conn
-            .call(Cow::Borrowed("removeErasureCodingPolicy"), args)?)
+        self.conn
+            .call(Cow::Borrowed("removeErasureCodingPolicy"), args)
     }
 
     #[allow(non_snake_case)]
@@ -849,9 +809,8 @@ impl ClientNamenodeService {
         &mut self,
         args: &EnableErasureCodingPolicyRequestProto,
     ) -> Result<EnableErasureCodingPolicyResponseProto> {
-        Ok(self
-            .conn
-            .call(Cow::Borrowed("enableErasureCodingPolicy"), args)?)
+        self.conn
+            .call(Cow::Borrowed("enableErasureCodingPolicy"), args)
     }
 
     #[allow(non_snake_case)]
@@ -859,9 +818,8 @@ impl ClientNamenodeService {
         &mut self,
         args: &DisableErasureCodingPolicyRequestProto,
     ) -> Result<DisableErasureCodingPolicyResponseProto> {
-        Ok(self
-            .conn
-            .call(Cow::Borrowed("disableErasureCodingPolicy"), args)?)
+        self.conn
+            .call(Cow::Borrowed("disableErasureCodingPolicy"), args)
     }
 
     #[allow(non_snake_case)]
@@ -869,9 +827,8 @@ impl ClientNamenodeService {
         &mut self,
         args: &GetErasureCodingPolicyRequestProto,
     ) -> Result<GetErasureCodingPolicyResponseProto> {
-        Ok(self
-            .conn
-            .call(Cow::Borrowed("getErasureCodingPolicy"), args)?)
+        self.conn
+            .call(Cow::Borrowed("getErasureCodingPolicy"), args)
     }
 
     #[allow(non_snake_case)]
@@ -879,9 +836,8 @@ impl ClientNamenodeService {
         &mut self,
         args: &GetErasureCodingCodecsRequestProto,
     ) -> Result<GetErasureCodingCodecsResponseProto> {
-        Ok(self
-            .conn
-            .call(Cow::Borrowed("getErasureCodingCodecs"), args)?)
+        self.conn
+            .call(Cow::Borrowed("getErasureCodingCodecs"), args)
     }
 
     #[allow(non_snake_case)]
@@ -889,19 +845,19 @@ impl ClientNamenodeService {
         &mut self,
         args: &GetQuotaUsageRequestProto,
     ) -> Result<GetQuotaUsageResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("getQuotaUsage"), args)?)
+        self.conn.call(Cow::Borrowed("getQuotaUsage"), args)
     }
     #[allow(non_snake_case)]
     pub fn listOpenFiles(
         &mut self,
         args: &ListOpenFilesRequestProto,
     ) -> Result<ListOpenFilesResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("listOpenFiles"), args)?)
+        self.conn.call(Cow::Borrowed("listOpenFiles"), args)
     }
 
     #[allow(non_snake_case)]
     pub fn msync(&mut self, args: &MsyncRequestProto) -> Result<MsyncResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("msync"), args)?)
+        self.conn.call(Cow::Borrowed("msync"), args)
     }
 
     #[allow(non_snake_case)]
@@ -909,9 +865,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &SatisfyStoragePolicyRequestProto,
     ) -> Result<SatisfyStoragePolicyResponseProto> {
-        Ok(self
-            .conn
-            .call(Cow::Borrowed("satisfyStoragePolicy"), args)?)
+        self.conn.call(Cow::Borrowed("satisfyStoragePolicy"), args)
     }
 
     #[allow(non_snake_case)]
@@ -919,7 +873,7 @@ impl ClientNamenodeService {
         &mut self,
         args: &HAServiceStateRequestProto,
     ) -> Result<HAServiceStateResponseProto> {
-        Ok(self.conn.call(Cow::Borrowed("getHAServiceState"), args)?)
+        self.conn.call(Cow::Borrowed("getHAServiceState"), args)
     }
 
     #[inline]
