@@ -209,15 +209,19 @@ impl<'a> Ls<'a> {
 
         if args.sort_mtime {
             if args.sort_reversed {
-                data.sort_unstable_by_key(|a| Reverse(a.timestamp));
-            } else {
                 data.sort_unstable_by_key(|a| a.timestamp);
+            } else {
+                // Please note that by default `hdfs dfs -ls` sorts
+                // by timestamp from older to newer.
+                data.sort_unstable_by_key(|a| Reverse(a.timestamp));
             }
         } else if args.sort_size {
             if args.sort_reversed {
-                data.sort_unstable_by_key(|a| Reverse(a.size));
-            } else {
                 data.sort_unstable_by_key(|a| a.size);
+            } else {
+                // Please note that by default `hdfs dfs -ls` sorts
+                // by file size from largest to smallerst.
+                data.sort_unstable_by_key(|a| Reverse(a.size));
             }
         } else {
             // Default sort is sort by name; can be just reversed if
