@@ -47,7 +47,7 @@ pub(crate) unsafe fn set_errno_with_hadoop_error(e: fs::FsError) -> fs::FsError 
     let the_errno = match &e {
         fs::FsError::NotFound(_) => libc::ENOENT,
         fs::FsError::Rpc(r) => match r {
-            rpc::RpcError::IO(e) => e.raw_os_error().unwrap_or(EINTERNAL),
+            rpc::RpcError::Io(e) => e.raw_os_error().unwrap_or(EINTERNAL),
             _ => r.get_class_name().map(get_error_code).unwrap_or(EINTERNAL),
         },
     };

@@ -17,7 +17,7 @@ use std::borrow::Cow;
 
 use super::Command;
 use anyhow::Result;
-use libhdfesse::fs::HDFS;
+use libhdfesse::fs::Hdfs;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -29,11 +29,11 @@ pub struct MvArgs {
 }
 
 pub struct Mv<'a> {
-    hdfs: &'a mut HDFS,
+    hdfs: &'a mut Hdfs,
 }
 
 impl<'a> Mv<'a> {
-    pub fn new(hdfs: &'a mut HDFS) -> Self {
+    pub fn new(hdfs: &'a mut Hdfs) -> Self {
         Self { hdfs }
     }
 }

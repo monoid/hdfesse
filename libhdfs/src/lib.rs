@@ -50,7 +50,8 @@ pub enum tObjectKind {
 }
 
 // TODO make these types distinct
-pub type hdfsFS = *mut libhdfesse::fs::HDFS;
+#[allow(clippy::upper_case_acronyms)]
+pub type hdfsFS = *mut libhdfesse::fs::Hdfs;
 pub type hdfsBuilder = c_void;
 pub type hdfsStreamBuilder = c_void;
 pub type hadoopRzOptions = c_void;
@@ -551,7 +552,7 @@ pub unsafe extern "C" fn hdfsGetPathInfo(fs: hdfsFS, path: *const c_char) -> *mu
                 // TODO as we deallocate as Box<[T]>, one can create
                 // it from Box<T> instead of Vec.
                 // TODO check instead of unwrap
-                let cont = vec!(hdfsFileInfo::try_from(&fstat).unwrap());
+                let cont = vec![hdfsFileInfo::try_from(&fstat).unwrap()];
 
                 let mut sl = cont.into_boxed_slice();
                 let ptr = sl.as_mut_ptr();

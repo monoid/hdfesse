@@ -28,12 +28,12 @@ pub enum FsError {
     Rpc(rpc::RpcError),
 }
 
-pub struct HDFS {
+pub struct Hdfs {
     // TODO make it private after moving here LsGroupiterator.
     pub service: service::ClientNamenodeService,
 }
 
-impl HDFS {
+impl Hdfs {
     pub fn new(service: service::ClientNamenodeService) -> Self {
         Self { service }
     }

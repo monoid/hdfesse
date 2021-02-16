@@ -19,7 +19,7 @@ use super::Command;
 use crate::cli::ls_output::{LineFormat, Record};
 use anyhow::Result;
 use hdfesse_proto::hdfs::{HdfsFileStatusProto, HdfsFileStatusProto_Flags};
-use libhdfesse::fs::{FsError, HDFS};
+use libhdfesse::fs::{FsError, Hdfs};
 use libhdfesse::service::ClientNamenodeService;
 use protobuf::RepeatedField;
 use structopt::StructOpt;
@@ -163,11 +163,11 @@ impl<'a> Iterator for LsGroupIterator<'a> {
 }
 
 pub struct Ls<'a> {
-    hdfs: &'a mut HDFS,
+    hdfs: &'a mut Hdfs,
 }
 
 impl<'a> Ls<'a> {
-    pub fn new(hdfs: &'a mut HDFS) -> Self {
+    pub fn new(hdfs: &'a mut Hdfs) -> Self {
         Self { hdfs }
     }
 

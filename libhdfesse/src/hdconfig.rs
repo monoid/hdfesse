@@ -23,7 +23,7 @@ use xml::reader::{EventReader, XmlEvent};
 /// "hdfs-site.xml" either from HADOOP_CONF_DIR default variable or
 /// "/etc/hadoop/conf" directory.
 pub fn get_config_path() -> PathBuf {
-    let conf_dir = std::env::var_os("HADOOP_CONF_DIR").unwrap_or("/etc/hadoop/conf".into());
+    let conf_dir = std::env::var_os("HADOOP_CONF_DIR").unwrap_or_else(|| "/etc/hadoop/conf".into());
     PathBuf::from(conf_dir).join("hdfs-site.xml")
 }
 

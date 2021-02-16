@@ -97,7 +97,7 @@ pub enum RpcErrorKind {
 #[derive(Debug, Error)]
 pub enum RpcError {
     #[error(transparent)]
-    IO(#[from] io::Error),
+    Io(#[from] io::Error),
     #[error(transparent)]
     Protobuf(#[from] protobuf::ProtobufError),
     /// Most operation fail silently if you provide incorrect
