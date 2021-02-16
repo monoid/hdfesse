@@ -13,52 +13,17 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-use std::borrow::Cow;
+use std::{borrow::Cow, cmp::Reverse};
 
 use super::Command;
+use crate::cli::ls_output::{LineFormat, Record};
 use anyhow::Result;
-use hdfesse_proto::hdfs::{
-    HdfsFileStatusProto, HdfsFileStatusProto_FileType, HdfsFileStatusProto_Flags,
-};
+use hdfesse_proto::hdfs::{HdfsFileStatusProto, HdfsFileStatusProto_Flags};
 use libhdfesse::fs::{FsError, HDFS};
 use libhdfesse::service::ClientNamenodeService;
 use protobuf::RepeatedField;
 use structopt::StructOpt;
 use thiserror::Error;
-
-fn format_flag_group(group: u32) -> &'static str {
-    match group {
-        0 => "---",
-        1 => "--x",
-        2 => "-w-",
-        3 => "-wx",
-        4 => "r--",
-        5 => "r-x",
-        6 => "rw-",
-        7 => "rwx",
-        _ => unreachable!(),
-    }
-}
-
-fn format_type(type_: HdfsFileStatusProto_FileType) -> char {
-    match type_ {
-        HdfsFileStatusProto_FileType::IS_DIR => 'd',
-        HdfsFileStatusProto_FileType::IS_FILE => '-',
-        // It seems that original hdfs doesn't care about this
-        // case.
-        HdfsFileStatusProto_FileType::IS_SYMLINK => 's',
-    }
-}
-
-// TODO It can be optimized to write, not to create a string.  But
-// does it worth it?
-fn format_flags(flags: u32) -> String {
-    let mut res = String::with_capacity(9);
-    for offset in [6u32, 3, 0].iter() {
-        res.push_str(format_flag_group((flags >> offset) & 0x7));
-    }
-    res
-}
 
 /*
  * See
@@ -67,18 +32,57 @@ fn format_flags(flags: u32) -> String {
 /// ls options are factored out to separate struct for convenience.
 #[derive(Debug, StructOpt)]
 pub struct LsOpts {
-    #[structopt(short)]
+    // TODO unimplemented
+    #[structopt(
+        short,
+        name = "directory",
+        help = "Directories are listed as plain files"
+    )]
     directory: bool,
-    #[structopt(short = "t")]
-    mtime: bool,
-    #[structopt(short = "u")]
+    #[structopt(
+        short = "t",
+        name = "sort_mtime",
+        conflicts_with = "stream",
+        help = "Sort output by modification time (most recent first)"
+    )]
+    sort_mtime: bool,
+    #[structopt(
+        short = "u",
+        help = "Use access time rather than modification time for display and sorting"
+    )]
     atime: bool,
-    #[structopt(short = "C")]
+    #[structopt(short = "C", help = "Display the paths of files and directories only")]
     path_only: bool,
-    #[structopt(short = "r")]
-    reversed: bool,
-    #[structopt(short = "R")]
+    #[structopt(short = "r", help = "Reverse the sort order")]
+    sort_reversed: bool,
+    #[structopt(
+        short = "R",
+        conflicts_with = "stream",
+        conflicts_with = "directory",
+        help = "Recursively list subdirectories encountered"
+    )]
+    // TODO unimplemented
     recursive: bool,
+    #[structopt(
+        short = "S",
+        conflicts_with = "sort_mtime",
+        conflicts_with = "stream",
+        help = "Sort output by file size"
+    )]
+    sort_size: bool,
+    // TODO: all it does is it replaces certain Unicode char types by
+    // '?' in whole output string (not only filename, but owner and
+    // group too).
+    #[structopt(short = "q", help = "Print ? instead of non-printable characters")]
+    quote: bool,
+    #[structopt(
+        short = "h",
+        help = "Formats the sizes of files in a human-readable fashion"
+    )]
+    human: bool,
+    // TODO unimplemented
+    #[structopt(long = "--stream", help = "Streaiming mode")]
+    stream: bool,
     // TODO ...
 }
 
@@ -125,8 +129,8 @@ impl<'a> LsGroupIterator<'a> {
         let partial_list = listing.mut_dirList().take_partialListing();
 
         self.count += partial_list.len();
-        let len = self.count + listing.get_dirList().get_remainingEntries() as usize;
-        self.len = Some(len);
+        let remaining_len = listing.get_dirList().get_remainingEntries() as usize;
+        self.len = Some(self.count + remaining_len);
 
         // Search further from the last value
         // It is very unlikely that partial_list is empty and
@@ -135,7 +139,10 @@ impl<'a> LsGroupIterator<'a> {
         // data.
         self.prev_name = partial_list.last().map(|entry| entry.get_path().to_vec());
 
-        Ok((len, partial_list))
+        // The remaining_len returns number of items after the last
+        // element of the partial_list.  We return here remaining
+        // items including the partial_list.
+        Ok((remaining_len + partial_list.len(), partial_list))
     }
 }
 
@@ -170,56 +177,82 @@ impl<'a> Ls<'a> {
             .get_file_info(Cow::Borrowed(&path))
             .map_err(LsError::Fs)?;
 
-        // TODO handle sorting and other keys
         let mut is_first = true;
+        let mut data = Vec::new();
 
         for group in LsGroupIterator::new(&mut self.hdfs.service, &path) {
-            let (total_len, group) = group?;
+            let (remaining_len, group) = group?;
+
+            // Noop for all iterations except the first, unless new file
+            // will appear in process of listing.
+            data.reserve(remaining_len);
 
             if !args.recursive & is_first {
-                println!("Found {} items", total_len,);
+                // For first item, remaining_len is the total length.
+                println!("Found {} items", remaining_len);
                 is_first = false;
             }
 
-            // Using streaming approach is crucial for huge directories where
-            // data does not fit into memory.  For sorted data, one has to
-            // collect everything in memory; but in case of problem, you can
-            // at least get default list and sort it with some external tool.
-            for entry in group.iter() {
-                print!(
-                    "{}{}{} ",
-                    format_type(entry.get_fileType()),
-                    format_flags(entry.get_permission().get_perm()),
-                    if entry.get_flags() & (HdfsFileStatusProto_Flags::HAS_ACL as u32) != 0 {
-                        '+'
-                    } else {
-                        '-'
-                    },
-                );
-                if entry.get_fileType() == HdfsFileStatusProto_FileType::IS_DIR {
-                    print!("-");
-                } else {
-                    print!("{}", entry.get_block_replication());
-                }
-                let time = chrono::NaiveDateTime::from_timestamp(
-                    if args.atime {
+            data.extend(group.into_iter().map(|mut entry: HdfsFileStatusProto| {
+                Record {
+                    file_type: entry.get_fileType(),
+                    perm: entry.get_permission().get_perm(),
+                    has_acl: entry.get_flags() & (HdfsFileStatusProto_Flags::HAS_ACL as u32) != 0,
+                    replication: entry.get_block_replication(),
+                    owner: entry.take_owner().into_boxed_str(),
+                    group: entry.take_group().into_boxed_str(),
+                    size: entry.get_length(),
+                    timestamp: if args.atime {
                         entry.get_access_time()
                     } else {
                         entry.get_modification_time()
-                    } as i64
-                        / 1000, // millisec to secs
-                    0,
-                );
-                println!(
-                    " {} {} {} {} {}",
-                    entry.get_owner(),
-                    entry.get_group(),
-                    entry.get_length(),
-                    time.format("%Y-%m-%d %H:%M"),
-                    // TODO original implementation uses different lossy char
-                    String::from_utf8_lossy(entry.get_path()),
-                );
+                    },
+                    // TODO: move formatting option to formatter.
+                    // Record should hold a Vec.
+                    path: String::from_utf8_lossy(entry.get_path()).into(),
+                }
+            }));
+        }
+
+        if args.sort_mtime {
+            if args.sort_reversed {
+                data.sort_unstable_by_key(|a| Reverse(a.timestamp));
+            } else {
+                data.sort_unstable_by_key(|a| a.timestamp);
             }
+        } else if args.sort_size {
+            if args.sort_reversed {
+                data.sort_unstable_by_key(|a| Reverse(a.size));
+            } else {
+                data.sort_unstable_by_key(|a| a.size);
+            }
+        } else {
+            // Default sort is sort by name; can be just reversed if
+            // needed.
+            if args.sort_reversed {
+                data.reverse();
+            }
+        }
+
+        let mut format = if args.path_only {
+            LineFormat::compact()
+        } else {
+            LineFormat::full(args.human)
+        };
+        // Using streaming approach is crucial for huge directories where
+        // data does not fit into memory.  For sorted data, one has to
+        // collect everything in memory; but in case of problem, you can
+        // at least get default list and sort it with some external tool.
+        for entry in data.iter() {
+            for fmt in &mut format.formatters {
+                fmt.update_len(entry);
+            }
+        }
+        for entry in data.iter() {
+            for fmt in &format.formatters {
+                fmt.print(entry)?;
+            }
+            println!();
         }
         Ok(())
     }
@@ -238,30 +271,5 @@ impl<'a> Command for Ls<'a> {
             }
         }
         Ok(if has_err { 1 } else { 0 })
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_format_flags() {
-        assert_eq!(format_flags(0o000), "---------");
-        assert_eq!(format_flags(0o007), "------rwx");
-        assert_eq!(format_flags(0o077), "---rwxrwx");
-        assert_eq!(format_flags(0o777), "rwxrwxrwx");
-        assert_eq!(format_flags(0o707), "rwx---rwx");
-        assert_eq!(format_flags(0o123), "--x-w--wx");
-        assert_eq!(format_flags(0o456), "r--r-xrw-");
-
-        assert_eq!(format_flags(1), "--------x");
-        assert_eq!(format_flags(2), "-------w-");
-        assert_eq!(format_flags(3), "-------wx");
-        assert_eq!(format_flags(4), "------r--");
-        assert_eq!(format_flags(5), "------r-x");
-        assert_eq!(format_flags(6), "------rw-");
-        assert_eq!(format_flags(7), "------rwx");
-        assert_eq!(format_flags(42), "---r-x-w-");
     }
 }
