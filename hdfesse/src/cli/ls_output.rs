@@ -175,7 +175,7 @@ impl<W: Write> FieldFormatter<W> for SimpleSizeFormatter {
     fn update_len(&mut self, _entry: &Record) {}
 
     fn print(&self, out: &mut W, entry: &Record) -> std::io::Result<()> {
-        write!(out, "{0:>10}", entry.size)
+        write!(out, " {0:>10}", entry.size)
     }
 
     fn print_streaming(&self, out: &mut W, entry: &Record) -> std::io::Result<()> {
