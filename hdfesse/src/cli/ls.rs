@@ -13,14 +13,14 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-use std::{borrow::Cow, cmp::Reverse};
+use std::{borrow::Cow, cmp::Reverse, io::Write};
 
 use super::Command;
 use crate::cli::ls_output::{LineFormat, Record};
-use anyhow::Result;
 use hdfesse_proto::hdfs::HdfsFileStatusProto;
 use libhdfesse::fs::{FsError, Hdfs};
 use libhdfesse::service::ClientNamenodeService;
+use libhdfesse::rpc::RpcError;
 use protobuf::RepeatedField;
 use structopt::StructOpt;
 use thiserror::Error;
@@ -98,6 +98,8 @@ pub struct LsArgs {
 pub enum LsError {
     #[error("ls: {0}")]
     Fs(#[from] FsError),
+    #[error(transparent)]
+    LocalIo(std::io::Error),
 }
 
 // TODO it has to be moved to libhdfesse::fs and made public.
@@ -121,7 +123,7 @@ impl<'a> LsGroupIterator<'a> {
         }
     }
 
-    fn next_group(&mut self) -> Result<(usize, RepeatedField<HdfsFileStatusProto>)> {
+    fn next_group(&mut self) -> Result<(usize, RepeatedField<HdfsFileStatusProto>), RpcError> {
         let list_from = self.prev_name.take().unwrap_or_default();
         let mut listing = self
             .service
@@ -147,7 +149,7 @@ impl<'a> LsGroupIterator<'a> {
 }
 
 impl<'a> Iterator for LsGroupIterator<'a> {
-    type Item = Result<(usize, RepeatedField<HdfsFileStatusProto>)>;
+    type Item = Result<(usize, RepeatedField<HdfsFileStatusProto>), RpcError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.len.map(|len| self.count >= len).unwrap_or(false) {
@@ -171,7 +173,7 @@ impl<'a> Ls<'a> {
         Self { hdfs }
     }
 
-    fn list_dir(&mut self, path: String, args: &LsOpts) -> Result<()> {
+    fn list_dir(&mut self, path: String, args: &LsOpts) -> Result<(), LsError> {
         // Ensure file exists.
         self.hdfs
             .get_file_info(Cow::Borrowed(&path))
@@ -180,16 +182,24 @@ impl<'a> Ls<'a> {
         let mut is_first = true;
         let mut data = Vec::new();
 
-        let info = match self.hdfs.service.getFileInfo(path.clone())? {
+        let info = match self
+            .hdfs
+            .service
+            // TODO use hdfs method
+            .getFileInfo(path.clone()).map_err(FsError::Rpc)?
+        {
             Some(info) => info,
             None => return Err(FsError::NotFound(path).into()),
         };
+
+        let stdout_obj = std::io::stdout();
+        let mut stdout = std::io::LineWriter::new(stdout_obj.lock());
 
         if args.directory {
             data.push(Record::from_hdfs_file_status(info, args.atime));
         } else {
             for group in LsGroupIterator::new(&mut self.hdfs.service, &path) {
-                let (remaining_len, group) = group?;
+                let (remaining_len, group) = group.map_err(FsError::Rpc)?;
 
                 // Noop for all iterations except the first, unless new file
                 // will appear in process of listing.
@@ -247,9 +257,9 @@ impl<'a> Ls<'a> {
         }
         for entry in data.iter() {
             for fmt in &format.formatters {
-                fmt.print(entry)?;
+                fmt.print(&mut stdout, entry).map_err(LsError::LocalIo)?;
             }
-            println!();
+            writeln!(&mut stdout).map_err(LsError::LocalIo)?;
         }
         Ok(())
     }
@@ -263,6 +273,12 @@ impl<'a> Command for Ls<'a> {
         let mut has_err = false;
         for path in args.paths {
             if let Err(e) = self.list_dir(path, &args.opts) {
+                if let LsError::LocalIo(ioe) = &e {
+                    if ioe.kind() == std::io::ErrorKind::BrokenPipe {
+                        // Exit early because of EPIPE
+                        break;
+                    }
+                }
                 has_err = true;
                 eprintln!("{}", e);
             }

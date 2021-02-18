@@ -19,6 +19,7 @@ use hdfesse_proto::hdfs::{
 use number_prefix::NumberPrefix;
 use std::borrow::Cow;
 use std::cmp::max;
+use std::io::Write;
 
 fn format_flag_group(group: u32) -> &'static str {
     match group {
@@ -89,13 +90,13 @@ impl Record {
     }
 }
 
-pub(crate) trait FieldFormatter {
+pub(crate) trait FieldFormatter<W: Write> {
     fn update_len(&mut self, rec: &Record);
     // TODO both print and print_streaming should get a StdoutLock,
     // use write! to return io::Error for EPIPE to be handled in the
     // main.
-    fn print(&self, rec: &Record) -> std::io::Result<()>;
-    fn print_streaming(&self, rec: &Record) -> std::io::Result<()>;
+    fn print(&self, out: &mut W, rec: &Record) -> std::io::Result<()>;
+    fn print_streaming(&self, out: &mut W, rec: &Record) -> std::io::Result<()>;
 }
 
 struct PermFormatter {}
@@ -106,25 +107,25 @@ impl Default for PermFormatter {
     }
 }
 
-impl FieldFormatter for PermFormatter {
+impl<W: Write> FieldFormatter<W> for PermFormatter {
     fn update_len(&mut self, _rec: &Record) {
         // Fixed-size rec
     }
 
-    fn print(&self, entry: &Record) -> std::io::Result<()> {
-        print!(
+    fn print(&self, out: &mut W, entry: &Record) -> std::io::Result<()> {
+        write!(
+            out,
             "{}{}",
             format_type(entry.file_type),
             format_flags(entry.perm),
             // TODO this field is print when -e is passed, which is not
             // supported by us.
             // if entry.has_acl { '+' } else { '-' },
-        );
-        Ok(())
+        )
     }
 
-    fn print_streaming(&self, rec: &Record) -> std::io::Result<()> {
-        self.print(rec)
+    fn print_streaming(&self, out: &mut W, rec: &Record) -> std::io::Result<()> {
+        self.print(out, rec)
     }
 }
 
@@ -148,19 +149,17 @@ impl Default for ReplicationFormatter {
     }
 }
 
-impl FieldFormatter for ReplicationFormatter {
+impl<W: Write> FieldFormatter<W> for ReplicationFormatter {
     fn update_len(&mut self, entry: &Record) {
         self.max_len = max(self.max_len, Self::format(entry).chars().count());
     }
 
-    fn print(&self, entry: &Record) -> std::io::Result<()> {
-        print!(" {0:>1$}", Self::format(entry), self.max_len);
-        Ok(())
+    fn print(&self, out: &mut W, entry: &Record) -> std::io::Result<()> {
+        write!(out, " {0:>1$}", Self::format(entry), self.max_len)
     }
 
-    fn print_streaming(&self, entry: &Record) -> std::io::Result<()> {
-        print!("{}", Self::format(entry));
-        Ok(())
+    fn print_streaming(&self, out: &mut W, entry: &Record) -> std::io::Result<()> {
+        write!(out, "{}", Self::format(entry))
     }
 }
 
@@ -172,17 +171,15 @@ impl Default for SimpleSizeFormatter {
     }
 }
 
-impl FieldFormatter for SimpleSizeFormatter {
+impl<W: Write> FieldFormatter<W> for SimpleSizeFormatter {
     fn update_len(&mut self, _entry: &Record) {}
 
-    fn print(&self, entry: &Record) -> std::io::Result<()> {
-        print!("{0:>10}", entry.size);
-        Ok(())
+    fn print(&self, out: &mut W, entry: &Record) -> std::io::Result<()> {
+        write!(out, "{0:>10}", entry.size)
     }
 
-    fn print_streaming(&self, entry: &Record) -> std::io::Result<()> {
-        print!("{}", entry.size);
-        Ok(())
+    fn print_streaming(&self, out: &mut W, entry: &Record) -> std::io::Result<()> {
+        write!(out, "{}", entry.size)
     }
 }
 
@@ -204,21 +201,18 @@ impl Default for HumanSizeFormatter {
         Self { max_len: 10 }
     }
 }
-
-impl FieldFormatter for HumanSizeFormatter {
+impl<W: Write> FieldFormatter<W> for HumanSizeFormatter {
     // TODO implement real units formatter
     fn update_len(&mut self, entry: &Record) {
         self.max_len = max(self.max_len, Self::format(entry.size as _).chars().count());
     }
 
-    fn print(&self, entry: &Record) -> std::io::Result<()> {
-        print!("{0:>1$}", Self::format(entry.size), self.max_len + 1);
-        Ok(())
+    fn print(&self, out: &mut W, entry: &Record) -> std::io::Result<()> {
+        write!(out, "{0:>1$}", Self::format(entry.size), self.max_len + 1)
     }
 
-    fn print_streaming(&self, entry: &Record) -> std::io::Result<()> {
-        print!("{}", Self::format(entry.size));
-        Ok(())
+    fn print_streaming(&self, out: &mut W, entry: &Record) -> std::io::Result<()> {
+        write!(out, "{}", Self::format(entry.size))
     }
 }
 
@@ -253,19 +247,22 @@ impl Default for DateFormatter {
     }
 }
 
-impl FieldFormatter for DateFormatter {
+impl<W: Write> FieldFormatter<W> for DateFormatter {
     fn update_len(&mut self, entry: &Record) {
         self.max_len = max(self.max_len, self.format_datetime(entry).chars().count());
     }
 
-    fn print(&self, entry: &Record) -> std::io::Result<()> {
-        print!("{0:>1$}", self.format_datetime(entry), self.max_len + 1);
-        Ok(())
+    fn print(&self, out: &mut W, entry: &Record) -> std::io::Result<()> {
+        write!(
+            out,
+            "{0:>1$}",
+            self.format_datetime(entry),
+            self.max_len + 1
+        )
     }
 
-    fn print_streaming(&self, entry: &Record) -> std::io::Result<()> {
-        print!("{}", self.format_datetime(entry));
-        Ok(())
+    fn print_streaming(&self, out: &mut W, entry: &Record) -> std::io::Result<()> {
+        write!(out, "{}", self.format_datetime(entry))
     }
 }
 
@@ -279,19 +276,17 @@ impl Default for OwnerFormatter {
     }
 }
 
-impl FieldFormatter for OwnerFormatter {
+impl<W: Write> FieldFormatter<W> for OwnerFormatter {
     fn update_len(&mut self, entry: &Record) {
         self.max_len = max(self.max_len, entry.owner.chars().count());
     }
 
-    fn print(&self, entry: &Record) -> std::io::Result<()> {
-        print!(" {0:1$}", entry.owner, self.max_len);
-        Ok(())
+    fn print(&self, out: &mut W, entry: &Record) -> std::io::Result<()> {
+        write!(out, " {0:1$}", entry.owner, self.max_len)
     }
 
-    fn print_streaming(&self, entry: &Record) -> std::io::Result<()> {
-        print!("{}", entry.owner);
-        Ok(())
+    fn print_streaming(&self, out: &mut W, entry: &Record) -> std::io::Result<()> {
+        write!(out, "{}", entry.owner)
     }
 }
 
@@ -305,19 +300,17 @@ impl Default for GroupFormatter {
     }
 }
 
-impl FieldFormatter for GroupFormatter {
+impl<W: Write> FieldFormatter<W> for GroupFormatter {
     fn update_len(&mut self, entry: &Record) {
         self.max_len = max(self.max_len, entry.group.chars().count());
     }
 
-    fn print(&self, entry: &Record) -> std::io::Result<()> {
-        print!(" {0:1$}", entry.group, self.max_len);
-        Ok(())
+    fn print(&self, out: &mut W, entry: &Record) -> std::io::Result<()> {
+        write!(out, " {0:1$}", entry.group, self.max_len)
     }
 
-    fn print_streaming(&self, entry: &Record) -> std::io::Result<()> {
-        print!("{}", entry.group);
-        Ok(())
+    fn print_streaming(&self, out: &mut W, entry: &Record) -> std::io::Result<()> {
+        write!(out, "{}", entry.group)
     }
 }
 
@@ -329,25 +322,23 @@ impl Default for NameFormatter {
     }
 }
 
-impl FieldFormatter for NameFormatter {
+impl<W: Write> FieldFormatter<W> for NameFormatter {
     fn update_len(&mut self, _entry: &Record) {}
 
-    fn print(&self, entry: &Record) -> std::io::Result<()> {
-        print!(" {}", entry.path);
-        Ok(())
+    fn print(&self, out: &mut W, entry: &Record) -> std::io::Result<()> {
+        write!(out, " {}", entry.path)
     }
 
-    fn print_streaming(&self, entry: &Record) -> std::io::Result<()> {
-        print!("{}", entry.path);
-        Ok(())
+    fn print_streaming(&self, out: &mut W, entry: &Record) -> std::io::Result<()> {
+        write!(out, "{}", entry.path)
     }
 }
 
-pub(crate) struct LineFormat {
-    pub(crate) formatters: Vec<Box<dyn FieldFormatter>>,
+pub(crate) struct LineFormat<W: Write> {
+    pub(crate) formatters: Vec<Box<dyn FieldFormatter<W>>>,
 }
 
-impl LineFormat {
+impl<W: Write> LineFormat<W> {
     /// Path-only output
     pub(crate) fn compact() -> Self {
         Self {
