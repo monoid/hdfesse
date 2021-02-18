@@ -11,4 +11,5 @@ hdfesse_proto = { path = "../hdfesse_proto" }
 phf = { version = "0.8", features = ["macros"] }
 protobuf = { version = "2", features = ["with-bytes"] }
 thiserror = "1.0"
+uuid = { version = "0.8", features = ["v4"] }
 xml-rs = "0.8"

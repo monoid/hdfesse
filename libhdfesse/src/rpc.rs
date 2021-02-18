@@ -159,7 +159,7 @@ pub struct HdfsConnection {
     stream: TcpStream,
     user: Box<str>,
     call_id: InfiniteSeq,
-    client_id: Vec<u8>,
+    client_id: [u8; 16],
 }
 
 impl HdfsConnection {
@@ -177,7 +177,9 @@ impl HdfsConnection {
             stream,
             user: user.into(),
             call_id: Default::default(),
-            client_id: vec![], // TODO gen random
+            // "ClientId must be a UUID - that is 16 octets"
+            // (hadoop/../RetryCache.java).
+            client_id: uuid::Uuid::new_v4().as_bytes().clone(),
         }
         .init_connection()
         .map_err(RpcConnectError::Rpc)
@@ -200,7 +202,7 @@ impl HdfsConnection {
             hh.set_rpcOp(RpcRequestHeaderProto_OperationProto::RPC_FINAL_PACKET);
             hh.set_callId(-3); // Use out-of order call_id for the header.
             hh.set_retryCount(-1);
-            hh.set_clientId(self.client_id.clone());
+            hh.set_clientId(Vec::from(&self.client_id[..]));
 
             let mut cc = IpcConnectionContextProto::default();
             cc.mut_userInfo().set_effectiveUser(self.user.to_string());
@@ -245,7 +247,7 @@ impl HdfsConnection {
         hh.set_rpcOp(RpcRequestHeaderProto_OperationProto::RPC_FINAL_PACKET);
         hh.set_callId(self.call_id.next());
         hh.set_retryCount(-1);
-        hh.set_clientId(self.client_id.clone());
+        hh.set_clientId(Vec::from(&self.client_id[..]));
 
         let mut rh = RequestHeaderProto::default();
         rh.set_declaringClassProtocolName(RPC_HDFS_PROTOCOL.to_owned());
@@ -312,7 +314,7 @@ impl HdfsConnection {
         hh.set_rpcOp(RpcRequestHeaderProto_OperationProto::RPC_CLOSE_CONNECTION);
         hh.set_callId(self.call_id.next());
         hh.set_retryCount(-1);
-        hh.set_clientId(self.client_id.clone());
+        hh.set_clientId(Vec::from(&self.client_id[..]));
 
         {
             let mut pbs = CodedOutputStream::new(&mut self.stream);
