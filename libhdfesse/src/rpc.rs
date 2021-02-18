@@ -87,6 +87,8 @@ pub enum RpcConnectError<CE: std::error::Error + Debug + 'static> {
     Connector(CE),
     #[error(transparent)]
     Rpc(RpcError),
+    #[error(transparent)]
+    User(username::Error),
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -163,6 +165,15 @@ pub struct HdfsConnection {
 }
 
 impl HdfsConnection {
+    pub fn new_without_user<C: Connector, A: ToSocketAddrs>(
+        addr: A,
+        connector: &C,
+    ) -> Result<Self, RpcConnectError<C::Error>> {
+        username::get_user_name()
+            .map_err(RpcConnectError::User)
+            .and_then(|name| Self::new(name.into(), addr, connector))
+    }
+
     /** Connect to HDFS master NameNode, creating a new HdfsConnection.
      */
     pub fn new<C: Connector, A: ToSocketAddrs>(
