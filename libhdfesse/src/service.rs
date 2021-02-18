@@ -32,6 +32,10 @@ impl ClientNamenodeService {
         Self { conn }
     }
 
+    pub fn get_user(&self) -> &str {
+        self.conn.get_user()
+    }
+
     // TODO this op takes args, other take proto struct.
     #[allow(non_snake_case)]
     pub fn getListing(

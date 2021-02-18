@@ -38,6 +38,10 @@ impl Hdfs {
         Self { service }
     }
 
+    pub fn get_user(&self) -> &str {
+        self.service.get_user()
+    }
+
     pub fn get_file_info(&mut self, src: Cow<str>) -> Result<HdfsFileStatusProto, FsError> {
         self.service
             .getFileInfo(src.clone().into_owned())

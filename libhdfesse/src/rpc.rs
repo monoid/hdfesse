@@ -243,6 +243,10 @@ impl HdfsConnection {
         Ok(cos.flush()?)
     }
 
+    pub fn get_user(&self) -> &str {
+        &self.user
+    }
+
     // TODO I failed to read to &dyn Message easily with current
     // protobuf, thus this method has Output type argument.
     pub fn call<Output: Message>(
