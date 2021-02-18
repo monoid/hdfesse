@@ -157,6 +157,7 @@ pub static ERROR_CLASS_MAP: ::phf::Map<&'static str, RpcErrorKind> = ::phf::phf_
  */
 pub struct HdfsConnection {
     stream: TcpStream,
+    user: Box<str>,
     call_id: InfiniteSeq,
     client_id: Vec<u8>,
 }
@@ -165,6 +166,7 @@ impl HdfsConnection {
     /** Connect to HDFS master NameNode, creating a new HdfsConnection.
      */
     pub fn new<C: Connector, A: ToSocketAddrs>(
+        user: Cow<'_, str>,
         addr: A,
         connector: &C,
     ) -> Result<Self, RpcConnectError<C::Error>> {
@@ -173,6 +175,7 @@ impl HdfsConnection {
             .map_err(RpcConnectError::Connector)?;
         Self {
             stream,
+            user: user.into(),
             call_id: Default::default(),
             client_id: vec![], // TODO gen random
         }
@@ -200,8 +203,7 @@ impl HdfsConnection {
             hh.set_clientId(self.client_id.clone());
 
             let mut cc = IpcConnectionContextProto::default();
-            // TODO proper user name.
-            cc.mut_userInfo().set_effectiveUser("ib".to_owned());
+            cc.mut_userInfo().set_effectiveUser(self.user.to_string());
             cc.set_protocol(RPC_HDFS_PROTOCOL.to_owned());
 
             Self::send_message_group(&mut cos, &[&hh, &cc])?;

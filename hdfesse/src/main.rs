@@ -22,6 +22,8 @@ use structopt::StructOpt;
 struct HdfessseApp {
     #[structopt(long)]
     namenode: String,
+    #[structopt(long)]
+    user: String,
     #[structopt(subcommand)]
     subcmd: TopSubcmd,
 }
@@ -43,8 +45,11 @@ enum Dfs {
 fn main() -> Result<()> {
     let opt = HdfessseApp::from_args();
 
-    let client =
-        libhdfesse::rpc::HdfsConnection::new(opt.namenode, &libhdfesse::rpc::SimpleConnector {})?;
+    let client = libhdfesse::rpc::HdfsConnection::new(
+        opt.user.into(),
+        opt.namenode,
+        &libhdfesse::rpc::SimpleConnector {},
+    )?;
 
     let service = libhdfesse::service::ClientNamenodeService::new(client);
     let mut hdfs = libhdfesse::fs::Hdfs::new(service);
