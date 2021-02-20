@@ -89,21 +89,21 @@ pub fn read_config_as_dict<R: Read>(
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct NamenodeConfig {
-    pub name: String,
+    pub name: Box<str>,
     // We do not use materialized socket address because
     // name resolving may change.
-    pub rpc_address: String,
-    pub servicerpc_address: String,
+    pub rpc_address: Box<str>,
+    pub servicerpc_address: Box<str>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct NameserviceConfig {
-    pub name: String,
+    pub name: Box<str>,
     pub rpc_nodes: Vec<NamenodeConfig>,
 }
 
 fn parse_namenode(
-    conf: &HashMap<String, String>,
+    conf: &HashMap<Box<str>, Box<str>>,
     namenode: &str,
     nameservice: &str,
 ) -> Option<NamenodeConfig> {
@@ -113,11 +113,11 @@ fn parse_namenode(
         nameservice, namenode
     );
 
-    let rpc = conf.get(&rpc_key);
-    let servicerpc = conf.get(&servicerpc_key);
+    let rpc = conf.get(rpc_key.as_str());
+    let servicerpc = conf.get(servicerpc_key.as_str());
 
     rpc.zip(servicerpc).map(|(rpc, servicercp)| NamenodeConfig {
-        name: namenode.to_owned(),
+        name: namenode.into(),
         rpc_address: rpc.clone(),
         servicerpc_address: servicercp.clone(),
     })
@@ -125,22 +125,21 @@ fn parse_namenode(
 
 /// Return named NameserviceConfig pairs.  First nameservice config is
 /// the default one, isn't it?
-pub fn parse_config(conf: &HashMap<String, String>) -> Vec<NameserviceConfig> {
+pub fn parse_config(conf: &HashMap<Box<str>, Box<str>>) -> Vec<NameserviceConfig> {
     let mut res = vec![];
 
     for name in conf
-        .get("dfs.nameservices")
-        .map(String::as_str)
+        .get("dfs.nameservices").map(AsRef::as_ref)
         .unwrap_or("")
         .split(',')
     {
         let namenodes = conf
-            .get(&format!("dfs.ha.namenodes.{}", name))
-            .map(String::as_str)
+            .get(format!("dfs.ha.namenodes.{}", name).as_str())
+            .map(AsRef::as_ref)
             .unwrap_or("");
 
         let serv = NameserviceConfig {
-            name: name.to_owned(),
+            name: name.into(),
             // We simply ignore incorrect addresses.
             rpc_nodes: namenodes
                 .split(',')
