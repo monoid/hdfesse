@@ -36,10 +36,11 @@ pub enum ConfigError {
     Xml(xml::reader::Error, PathBuf),
 }
 
-/// Load the XML Hadoop/HDFS config and return properties' name/values as dict.
-/// It performs only minimal validation.
-// TODO: read from string/bytes for tests.
-pub fn load_config_as_dict(config_path: &Path) -> Result<HashMap<String, String>, ConfigError> {
+/**
+Load the XML Hadoop/HDFS config and return properties' name/values as
+dict.  It performs only minimal validation.
+*/
+pub fn load_config_as_dict(config_path: &Path) -> Result<HashMap<Box<str>, Box<str>>, ConfigError> {
     let mut buf = io::BufReader::new(
         std::fs::File::open(config_path).map_err(|e| ConfigError::Io(e, config_path.to_owned()))?,
     );
@@ -50,7 +51,7 @@ pub fn load_config_as_dict(config_path: &Path) -> Result<HashMap<String, String>
 pub fn read_config_as_dict<R: Read>(
     r: R,
     config_path: &Path,
-) -> Result<HashMap<String, String>, ConfigError> {
+) -> Result<HashMap<Box<str>, Box<str>>, ConfigError> {
     let parser = EventReader::new(r);
 
     let mut elt = None;
@@ -74,9 +75,9 @@ pub fn read_config_as_dict<R: Read>(
             }
             XmlEvent::Characters(text) => {
                 if elt.as_deref() == Some("name") {
-                    key = Some(text);
+                    key = Some(text.into());
                 } else if elt.as_deref() == Some("value") {
-                    val = Some(text);
+                    val = Some(text.into());
                 }
             }
             _ => {}
@@ -164,7 +165,7 @@ mod tests {
         let data = b"<?xml version=\"1.0\" encoding=\"UTF-8\"?><configuration><property><name>test</name><value>value0</value></property></configuration>";
         let parsed = read_config_as_dict(&mut Cursor::new(data), Path::new("/test/me"))?;
         assert_eq!(parsed.len(), 1);
-        assert_eq!(parsed.get("test"), Some(&"value0".to_owned()));
+        assert_eq!(parsed.get("test").map(AsRef::as_ref), Some("value0"));
         Ok(())
     }
 
