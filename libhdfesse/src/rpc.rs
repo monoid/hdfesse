@@ -20,12 +20,11 @@ use std::{borrow::Cow, fmt::Debug};
 
 use thiserror::Error;
 
+use crate::util;
 use hdfesse_proto::IpcConnectionContext::*;
 use hdfesse_proto::ProtobufRpcEngine::RequestHeaderProto;
 use hdfesse_proto::RpcHeader::*;
 use protobuf::{CodedInputStream, CodedOutputStream, Message};
-use crate::util;
-
 
 const RPC_HEADER: &[u8; 4] = b"hrpc";
 const RPC_VERSION: u8 = 9;
@@ -192,7 +191,7 @@ impl HdfsConnection {
             call_id: Default::default(),
             // "ClientId must be a UUID - that is 16 octets"
             // (hadoop/../RetryCache.java).
-            client_id: uuid::Uuid::new_v4().as_bytes().clone(),
+            client_id: *uuid::Uuid::new_v4().as_bytes(),
         }
         .init_connection()
         .map_err(RpcConnectError::Rpc)

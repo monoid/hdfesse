@@ -129,7 +129,8 @@ pub fn parse_config(conf: &HashMap<Box<str>, Box<str>>) -> Vec<NameserviceConfig
     let mut res = vec![];
 
     for name in conf
-        .get("dfs.nameservices").map(AsRef::as_ref)
+        .get("dfs.nameservices")
+        .map(AsRef::as_ref)
         .unwrap_or("")
         .split(',')
     {

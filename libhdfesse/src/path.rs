@@ -57,8 +57,8 @@ pub fn hdfs_path_to_uri(path: &str) -> Result<URIReference<'static>, Box<dyn std
         }
     };
 
-    let (authority, path) = if rest.starts_with("//") {
-        let mut authority_split = rest[2..].splitn(2, '/');
+    let (authority, path) = if let Some(after) = rest.strip_prefix("//") {
+        let mut authority_split = after.splitn(2, '/');
         let authority = authority_split.next().unwrap();
         let maybe_path = authority_split.next();
         (Some(authority), maybe_path.unwrap_or("/"))

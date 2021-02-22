@@ -49,8 +49,9 @@ pub enum tObjectKind {
     kObjectKindDirectory = b'D' as isize,
 }
 
-// TODO make these types distinct
+#[allow(clippy::upper_case_acronyms)]
 pub type hdfsFS = *mut libhdfesse::fs::Hdfs;
+// TODO make these types distinct
 pub type hdfsBuilder = c_void;
 pub type hdfsStreamBuilder = c_void;
 pub type hadoopRzOptions = c_void;
