@@ -15,6 +15,7 @@
 */
 pub mod fs;
 pub mod hdconfig;
+pub mod path;
 pub mod rpc;
 pub mod service;
 mod util;
