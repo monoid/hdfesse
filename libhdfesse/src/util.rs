@@ -13,8 +13,6 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-pub mod fs;
-pub mod hdconfig;
-pub mod rpc;
-pub mod service;
-mod util;
+pub(crate) fn get_username() -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    username::get_user_name().map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
+}

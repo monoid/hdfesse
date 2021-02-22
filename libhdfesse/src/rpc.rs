@@ -24,6 +24,8 @@ use hdfesse_proto::IpcConnectionContext::*;
 use hdfesse_proto::ProtobufRpcEngine::RequestHeaderProto;
 use hdfesse_proto::RpcHeader::*;
 use protobuf::{CodedInputStream, CodedOutputStream, Message};
+use crate::util;
+
 
 const RPC_HEADER: &[u8; 4] = b"hrpc";
 const RPC_VERSION: u8 = 9;
@@ -88,7 +90,7 @@ pub enum RpcConnectError<CE: std::error::Error + Debug + 'static> {
     #[error(transparent)]
     Rpc(RpcError),
     #[error(transparent)]
-    User(username::Error),
+    NoUser(Box<dyn std::error::Error + Send + Sync>),
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -169,8 +171,8 @@ impl HdfsConnection {
         addr: A,
         connector: &C,
     ) -> Result<Self, RpcConnectError<C::Error>> {
-        username::get_user_name()
-            .map_err(RpcConnectError::User)
+        util::get_username()
+            .map_err(RpcConnectError::NoUser)
             .and_then(|name| Self::new(name.into(), addr, connector))
     }
 
