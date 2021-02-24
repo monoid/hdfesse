@@ -19,8 +19,9 @@ use super::Command;
 use crate::cli::ls_output::{LineFormat, Record};
 use hdfesse_proto::hdfs::HdfsFileStatusProto;
 use libhdfesse::fs::{FsError, Hdfs};
-use libhdfesse::service::ClientNamenodeService;
+use libhdfesse::path::{Path, PathError};
 use libhdfesse::rpc::RpcError;
+use libhdfesse::service::ClientNamenodeService;
 use protobuf::RepeatedField;
 use structopt::StructOpt;
 use thiserror::Error;
@@ -96,6 +97,8 @@ pub struct LsArgs {
 
 #[derive(Debug, Error)]
 pub enum LsError {
+    #[error(transparent)]
+    Uri(PathError),
     #[error("ls: {0}")]
     Fs(#[from] FsError),
     #[error(transparent)]
@@ -173,10 +176,13 @@ impl<'a> Ls<'a> {
         Self { hdfs }
     }
 
-    fn list_dir(&mut self, path: String, args: &LsOpts) -> Result<(), LsError> {
+    fn list_dir(&mut self, path: &str, args: &LsOpts) -> Result<(), LsError> {
+        // TODO resolving
+        let path = Path::new(path).map_err(LsError::Uri)?;
+        let path_str = path.to_string();
         // Ensure file exists.
         self.hdfs
-            .get_file_info(Cow::Borrowed(&path))
+            .get_file_info(Cow::Borrowed(&path_str))
             .map_err(LsError::Fs)?;
 
         let mut is_first = true;
@@ -186,10 +192,11 @@ impl<'a> Ls<'a> {
             .hdfs
             .service
             // TODO use hdfs method
-            .getFileInfo(path.clone()).map_err(FsError::Rpc)?
+            .getFileInfo(path_str.clone())
+            .map_err(FsError::Rpc)?
         {
             Some(info) => info,
-            None => return Err(FsError::NotFound(path).into()),
+            None => return Err(FsError::NotFound(path_str).into()),
         };
 
         let stdout_obj = std::io::stdout();
@@ -198,7 +205,7 @@ impl<'a> Ls<'a> {
         if args.directory {
             data.push(Record::from_hdfs_file_status(info, args.atime));
         } else {
-            for group in LsGroupIterator::new(&mut self.hdfs.service, &path) {
+            for group in LsGroupIterator::new(&mut self.hdfs.service, &path_str) {
                 let (remaining_len, group) = group.map_err(FsError::Rpc)?;
 
                 // Noop for all iterations except the first, unless new file
@@ -242,9 +249,9 @@ impl<'a> Ls<'a> {
         }
 
         let mut format = if args.path_only {
-            LineFormat::compact()
+            LineFormat::compact(path)
         } else {
-            LineFormat::full(args.human)
+            LineFormat::full(path, args.human)
         };
         // Using streaming approach is crucial for huge directories where
         // data does not fit into memory.  For sorted data, one has to
@@ -272,7 +279,7 @@ impl<'a> Command for Ls<'a> {
     fn run(&mut self, args: Self::Args) -> Result<i32, Self::Error> {
         let mut has_err = false;
         for path in args.paths {
-            if let Err(e) = self.list_dir(path, &args.opts) {
+            if let Err(e) = self.list_dir(&path, &args.opts) {
                 if let LsError::LocalIo(ioe) = &e {
                     if ioe.kind() == std::io::ErrorKind::BrokenPipe {
                         // Exit early because of EPIPE

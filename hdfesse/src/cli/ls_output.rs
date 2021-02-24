@@ -16,6 +16,7 @@
 use hdfesse_proto::hdfs::{
     HdfsFileStatusProto, HdfsFileStatusProto_FileType, HdfsFileStatusProto_Flags,
 };
+use libhdfesse::path;
 use number_prefix::NumberPrefix;
 use std::borrow::Cow;
 use std::cmp::max;
@@ -314,11 +315,15 @@ impl<W: Write> FieldFormatter<W> for GroupFormatter {
     }
 }
 
-struct NameFormatter {}
+struct NameFormatter {
+    base: path::Path<'static>,
+}
 
-impl Default for NameFormatter {
-    fn default() -> Self {
-        Self {}
+impl NameFormatter {
+    fn new(base: path::Path<'_>) -> Self {
+        Self {
+            base: base.into_owned(),
+        }
     }
 }
 
@@ -326,11 +331,13 @@ impl<W: Write> FieldFormatter<W> for NameFormatter {
     fn update_len(&mut self, _entry: &Record) {}
 
     fn print(&self, out: &mut W, entry: &Record) -> std::io::Result<()> {
-        write!(out, " {}", entry.path)
+        let joined = self.base.join(&entry.path).unwrap(); // TODO
+        write!(out, " {}", joined)
     }
 
     fn print_streaming(&self, out: &mut W, entry: &Record) -> std::io::Result<()> {
-        write!(out, "{}", entry.path)
+        let joined = self.base.join(&entry.path).unwrap(); // TODO
+        write!(out, "{}", joined)
     }
 }
 
@@ -340,15 +347,15 @@ pub(crate) struct LineFormat<W: Write> {
 
 impl<W: Write> LineFormat<W> {
     /// Path-only output
-    pub(crate) fn compact() -> Self {
+    pub(crate) fn compact(base: path::Path<'_>) -> Self {
         Self {
-            formatters: vec![Box::new(NameFormatter::default())],
+            formatters: vec![Box::new(NameFormatter::new(base))],
         }
     }
 
     /// Full output; human is the flag that enables human-readable
     /// file size output.
-    pub(crate) fn full(human: bool) -> Self {
+    pub(crate) fn full(base: path::Path<'_>, human: bool) -> Self {
         Self {
             formatters: vec![
                 Box::new(PermFormatter::default()),
@@ -361,7 +368,7 @@ impl<W: Write> LineFormat<W> {
                     Box::new(SimpleSizeFormatter::default())
                 },
                 Box::new(DateFormatter::default()),
-                Box::new(NameFormatter::default()),
+                Box::new(NameFormatter::new(base)),
             ],
         }
     }
