@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-use std::{borrow::Cow, cmp::Reverse, io::Write};
+use std::{cmp::Reverse, io::Write};
 
 use super::Command;
 use crate::cli::ls_output::{LineFormat, Record};
@@ -179,10 +179,10 @@ impl<'a> Ls<'a> {
     fn list_dir(&mut self, path: &str, args: &LsOpts) -> Result<(), LsError> {
         // TODO resolving
         let path = Path::new(path).map_err(LsError::Uri)?;
-        let path_str = path.to_string();
+        let path_str = path.to_path_string();
         // Ensure file exists.
         self.hdfs
-            .get_file_info(Cow::Borrowed(&path_str))
+            .get_file_info(path_str.as_str().into())
             .map_err(LsError::Fs)?;
 
         let mut is_first = true;

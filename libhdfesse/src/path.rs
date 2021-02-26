@@ -13,6 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
+use std::borrow::Cow;
 use std::convert::{TryFrom, TryInto};
 use std::fmt::Display;
 use std::str::Utf8Error;
@@ -118,9 +119,27 @@ pub fn hdfs_path_to_uri(path: &str) -> Result<URIReference<'static>, PathError> 
  * Return percent-decoded part of the URI reference.
  */
 pub fn uri_path_to_hdfs_path(uriref: &URIReference<'_>) -> Result<String, Utf8Error> {
-    percent_encoding::percent_decode_str(&uriref.path().to_string())
-        .decode_utf8()
-        .map(Into::into)
+    let mut result = String::new();
+    if let Some(scheme) = uriref.scheme() {
+        result.push_str(scheme.as_str()); // not decoded!
+        result.push(':');
+    }
+
+    if let Some(authority) = uriref.authority() {
+        result.push_str("//");
+        result.push_str(&authority.to_string()); // not decoded!
+    }
+
+    let path_string = uriref.path().to_string();
+    // is decoded!
+    let path = percent_encoding::percent_decode_str(&path_string).decode_utf8()?;
+    result.push_str(&path);
+
+    if let Some(fragment) = uriref.fragment() {
+        result.push('#');
+        result.push_str(fragment.as_str()); // not decoded!
+    }
+    Ok(result)
 }
 
 pub struct UriResolver {
@@ -172,34 +191,30 @@ impl UriResolver {
         Ok(Self { default_uri })
     }
 
-    pub fn resolve<'a>(&'a self, path: &'a str) -> Result<URI<'a>, PathError> {
-        let uri = hdfs_path_to_uri(path)?;
+    pub fn resolve<'a>(&'a self, path: &'a str) -> Result<Path, PathError> {
+        let uri: URIReference = hdfs_path_to_uri(path)?;
         Ok(if uri.is_relative_path_reference() {
-            let mut res = self.default_uri.clone();
-            let mut res_path = res.path().to_borrowed();
+            let mut res: URIReference = self.default_uri.clone().into();
+            let mut res_path = res.path().clone();
             for part in uri.path().segments() {
                 res_path
                     .push(part.clone())
                     .map_err(|e| PathError::PartError(e.into()))?;
             }
             res_path.normalize(false);
-            let res_path = res_path.into_owned();
-            // TODO: that's wrong, actually, as this happen because of
-            // wrong part.  This function cannot return BaseError at
-            // all.
-            res.set_path(res_path).map_err(PathError::BaseError)?;
-            res.into_owned()
+            res.set_path(res_path).map_err(PathError::PartError)?;
+            Path { path: res }
         } else if uri.is_absolute_path_reference() {
-            let mut res = self.default_uri.clone();
+            let mut res: URIReference = self.default_uri.clone().into();
             res.set_path(uri.into_parts().2)
-                .map_err(PathError::BaseError)?;
-            res.into_owned()
+                .map_err(PathError::PartError)?;
+            Path { path: res }
         } else {
-            let mut res = self.default_uri.clone();
+            let mut res: URIReference = self.default_uri.clone().into();
             // TODO fragment can present.
             let (mb_scheme, mb_auth, path, _mb_query, _mb_fragment) = uri.into_parts();
             if let Some(scheme) = mb_scheme {
-                res.set_scheme(scheme).map_err(PathError::BaseError)?;
+                res.set_scheme(Some(scheme)).map_err(PathError::PartError)?;
             }
             if let Some(mut auth) = mb_auth {
                 if auth.username().is_none() {
@@ -216,12 +231,12 @@ impl UriResolver {
                     }
                 }
                 res.set_authority(Some(auth))
-                    .map_err(PathError::BaseError)?;
+                    .map_err(PathError::PartError)?;
             }
-            res.set_path(path).map_err(PathError::BaseError)?;
+            res.set_path(path).map_err(PathError::PartError)?;
             // TODO query shouldn't present; should we
             // return error if they do present?
-            res
+            Path { path: res }
         })
     }
 }
@@ -280,12 +295,25 @@ impl<'a> Path<'a> {
             path: self.path.into_owned(),
         }
     }
+
+    pub fn to_path_string(&self) -> String {
+        let path_string = self.path.path().to_string();
+        // is decoded!
+        match percent_encoding::percent_decode_str(&path_string)
+            .decode_utf8()
+            .unwrap()
+        {
+            Cow::Borrowed(_) => path_string,
+            Cow::Owned(s) => s,
+        }
+    }
 }
 
 impl<'a> Display for Path<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // Well, the unwrap_or_else should never execute.
-        f.write_str(&uri_path_to_hdfs_path(&self.path).unwrap_or_else(|_| self.path.to_string()))
+        // f.write_str(&uri_path_to_hdfs_path(&self.path).unwrap_or_else(|_| self.path.to_string()))
+        f.write_str(&uri_path_to_hdfs_path(&self.path).unwrap())
     }
 }
 
@@ -405,7 +433,7 @@ mod tests {
         let res = UriResolver::new("myhost", "myself", None, None).unwrap();
         assert_eq!(
             res.resolve("/te st").unwrap().to_string(),
-            "hdfs://myself@myhost/te%20st"
+            "hdfs://myself@myhost/te st"
         );
     }
 
