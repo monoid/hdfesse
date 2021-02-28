@@ -13,12 +13,13 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-use crate::{path::Path, rpc::RpcError, service::ClientNamenodeService};
+use std::iter::{FlatMap, Peekable};
+
+use crate::{fs::FsError, path::Path, rpc::RpcError, service::ClientNamenodeService};
 use protobuf::RepeatedField;
 
 use hdfesse_proto::hdfs::HdfsFileStatusProto;
 
-// TODO it has to be moved to libhdfesse::fs and made public.
 pub struct LsGroupIterator<'a> {
     path_string: String,
     prev_name: Option<Vec<u8>>,
@@ -65,17 +66,86 @@ impl<'a> LsGroupIterator<'a> {
 }
 
 impl<'a> Iterator for LsGroupIterator<'a> {
-    type Item = Result<(usize, RepeatedField<HdfsFileStatusProto>), RpcError>;
+    type Item = Result<(usize, RepeatedField<HdfsFileStatusProto>), FsError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.len.map(|len| self.count >= len).unwrap_or(false) {
             None
         } else {
-            Some(self.next_group())
+            Some(self.next_group().map_err(FsError::Rpc))
         }
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         (0, self.len)
+    }
+}
+
+pub struct LsIterator<'a, F>
+where
+    F: FnMut(
+        Result<(usize, RepeatedField<HdfsFileStatusProto>), FsError>,
+    ) -> std::vec::IntoIter<Result<HdfsFileStatusProto, FsError>>,
+{
+    nested: FlatMap<
+        Peekable<LsGroupIterator<'a>>,
+        std::vec::IntoIter<Result<HdfsFileStatusProto, FsError>>,
+        F,
+    >,
+}
+
+impl<'a, F> LsIterator<'a, F>
+where
+    F: FnMut(
+        Result<(usize, RepeatedField<HdfsFileStatusProto>), FsError>,
+    ) -> std::vec::IntoIter<Result<HdfsFileStatusProto, FsError>>,
+{
+    pub fn new(f: F, service: &'a mut ClientNamenodeService, path: &Path<'_>) -> Self {
+        Self {
+            nested: LsGroupIterator::new(service, path).peekable().flat_map(f),
+        }
+    }
+}
+
+pub(crate) fn ls_iter<'a>(
+    service: &'a mut ClientNamenodeService,
+    path: &Path<'_>,
+) -> LsIterator<
+    'a,
+    impl FnMut(
+        Result<(usize, RepeatedField<HdfsFileStatusProto>), FsError>,
+    ) -> std::vec::IntoIter<Result<HdfsFileStatusProto, FsError>>,
+> {
+    LsIterator::new(
+        |x| {
+            match x {
+                Ok((_, data)) => {
+                    let oks: Vec<Result<_, _>> = data.into_iter().map(Ok).collect();
+                    oks.into_iter()
+                }
+                Err(e) => {
+                    // vec![A; 1] calls internal from_elem func that
+                    // requires Clone. :(
+                    let mut errs = Vec::with_capacity(1);
+                    errs.push(Result::Err(e));
+                    errs.into_iter()
+                }
+            }
+        },
+        service,
+        path,
+    )
+}
+
+impl<'a, F> Iterator for LsIterator<'a, F>
+where
+    F: FnMut(
+        Result<(usize, RepeatedField<HdfsFileStatusProto>), FsError>,
+    ) -> std::vec::IntoIter<Result<HdfsFileStatusProto, FsError>>,
+{
+    type Item = Result<HdfsFileStatusProto, FsError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.nested.next()
     }
 }

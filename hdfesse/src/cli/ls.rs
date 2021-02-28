@@ -17,7 +17,6 @@ use std::{cmp::Reverse, io::Write};
 
 use super::Command;
 use crate::cli::ls_output::{LineFormat, Record};
-use hdfesse_proto::hdfs::HdfsFileStatusProto;
 use libhdfesse::fs::{FsError, Hdfs};
 use libhdfesse::path::{Path, PathError};
 use structopt::StructOpt;
@@ -114,27 +113,21 @@ impl<'a> Ls<'a> {
     fn list_dir(&mut self, path: &str, args: &LsOpts) -> Result<(), LsError> {
         // TODO resolving
         let path = Path::new(path).map_err(LsError::Uri)?;
-        let mut data = Vec::new();
 
         let stdout_obj = std::io::stdout();
         let mut stdout = std::io::LineWriter::new(stdout_obj.lock());
 
-        if args.directory {
-            let info = self.hdfs.get_file_info(&path).map_err(LsError::Fs)?;
-            data.push(Record::from_hdfs_file_status(info, args.atime));
+        let mut data = if args.directory {
+            vec![Record::from_hdfs_file_status(
+                self.hdfs.get_file_info(&path).map_err(LsError::Fs)?,
+                args.atime,
+            )]
         } else {
-            for group in self.hdfs.list_status(&path)? {
-                let (remaining_len, group) = group.map_err(FsError::Rpc)?;
-
-                // Noop for all iterations except the first, unless new file
-                // will appear in process of listing.
-                data.reserve(remaining_len);
-
-                data.extend(group.into_iter().map(|entry: HdfsFileStatusProto| {
-                    Record::from_hdfs_file_status(entry, args.atime)
-                }));
-            }
-        }
+            self.hdfs
+                .list_status(&path)?
+                .map(|res| res.map(|ent| Record::from_hdfs_file_status(ent, args.atime)))
+                .collect::<Result<Vec<_>, FsError>>()?
+        };
 
         if !args.recursive {
             println!("Found {} items", data.len());
