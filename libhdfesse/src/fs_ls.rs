@@ -13,14 +13,14 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-use crate::{service::ClientNamenodeService, rpc::RpcError};
+use crate::{path::Path, rpc::RpcError, service::ClientNamenodeService};
 use protobuf::RepeatedField;
 
 use hdfesse_proto::hdfs::HdfsFileStatusProto;
 
 // TODO it has to be moved to libhdfesse::fs and made public.
 pub struct LsGroupIterator<'a> {
-    path: &'a str,
+    path_string: String,
     prev_name: Option<Vec<u8>>,
     len: Option<usize>,
     count: usize,
@@ -29,9 +29,9 @@ pub struct LsGroupIterator<'a> {
 }
 
 impl<'a> LsGroupIterator<'a> {
-    pub fn new(service: &'a mut ClientNamenodeService, path: &'a str) -> Self {
+    pub fn new(service: &'a mut ClientNamenodeService, path: &Path<'_>) -> Self {
         Self {
-            path,
+            path_string: path.to_path_string(),
             prev_name: Default::default(),
             len: None,
             count: 0,
@@ -43,7 +43,7 @@ impl<'a> LsGroupIterator<'a> {
         let list_from = self.prev_name.take().unwrap_or_default();
         let mut listing = self
             .service
-            .getListing(self.path.to_owned(), list_from, false)?;
+            .getListing(self.path_string.clone(), list_from, false)?;
         let partial_list = listing.mut_dirList().take_partialListing();
 
         self.count += partial_list.len();

@@ -243,6 +243,7 @@ impl UriResolver {
     }
 }
 
+#[derive(Clone)]
 pub struct Path<'a> {
     path: URIReference<'a>,
 }

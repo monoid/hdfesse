@@ -18,7 +18,7 @@ use std::{cmp::Reverse, io::Write};
 use super::Command;
 use crate::cli::ls_output::{LineFormat, Record};
 use hdfesse_proto::hdfs::HdfsFileStatusProto;
-use libhdfesse::fs::{FsError, Hdfs, LsGroupIterator};
+use libhdfesse::fs::{FsError, Hdfs};
 use libhdfesse::path::{Path, PathError};
 use structopt::StructOpt;
 use thiserror::Error;
@@ -114,36 +114,30 @@ impl<'a> Ls<'a> {
     fn list_dir(&mut self, path: &str, args: &LsOpts) -> Result<(), LsError> {
         // TODO resolving
         let path = Path::new(path).map_err(LsError::Uri)?;
-        let path_str = path.to_path_string();
-        // Ensure file exists.
-        let info = self.hdfs.get_file_info(&path).map_err(LsError::Fs)?;
-
-        let mut is_first = true;
         let mut data = Vec::new();
 
         let stdout_obj = std::io::stdout();
         let mut stdout = std::io::LineWriter::new(stdout_obj.lock());
 
         if args.directory {
+            let info = self.hdfs.get_file_info(&path).map_err(LsError::Fs)?;
             data.push(Record::from_hdfs_file_status(info, args.atime));
         } else {
-            for group in LsGroupIterator::new(&mut self.hdfs.service, &path_str) {
+            for group in self.hdfs.list_status(&path)? {
                 let (remaining_len, group) = group.map_err(FsError::Rpc)?;
 
                 // Noop for all iterations except the first, unless new file
                 // will appear in process of listing.
                 data.reserve(remaining_len);
 
-                if !args.recursive & is_first {
-                    // For first item, remaining_len is the total length.
-                    println!("Found {} items", remaining_len);
-                    is_first = false;
-                }
-
                 data.extend(group.into_iter().map(|entry: HdfsFileStatusProto| {
                     Record::from_hdfs_file_status(entry, args.atime)
                 }));
             }
+        }
+
+        if !args.recursive {
+            println!("Found {} items", data.len());
         }
 
         if args.sort_mtime {

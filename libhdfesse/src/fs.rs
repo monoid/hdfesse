@@ -13,12 +13,11 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
+pub use crate::fs_ls::LsGroupIterator;
 use crate::{
     path::{Path, PathError},
-    rpc,
-    service,
+    rpc, service,
 };
-pub use crate::fs_ls::LsGroupIterator;
 use hdfesse_proto::hdfs::HdfsFileStatusProto;
 use thiserror::Error;
 
@@ -44,6 +43,11 @@ impl Hdfs {
 
     pub fn get_user(&self) -> &str {
         self.service.get_user()
+    }
+
+    pub fn list_status<'s>(&'s mut self, src: &Path<'_>) -> Result<LsGroupIterator<'s>, FsError> {
+        self.get_file_info(&src)?;
+        Ok(LsGroupIterator::new(&mut self.service, &src))
     }
 
     pub fn get_file_info(&mut self, src: &Path<'_>) -> Result<HdfsFileStatusProto, FsError> {
