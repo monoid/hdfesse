@@ -181,23 +181,10 @@ impl<'a> Ls<'a> {
         let path = Path::new(path).map_err(LsError::Uri)?;
         let path_str = path.to_path_string();
         // Ensure file exists.
-        self.hdfs
-            .get_file_info(path_str.as_str().into())
-            .map_err(LsError::Fs)?;
+        let info = self.hdfs.get_file_info(&path).map_err(LsError::Fs)?;
 
         let mut is_first = true;
         let mut data = Vec::new();
-
-        let info = match self
-            .hdfs
-            .service
-            // TODO use hdfs method
-            .getFileInfo(path_str.clone())
-            .map_err(FsError::Rpc)?
-        {
-            Some(info) => info,
-            None => return Err(FsError::NotFound(path_str).into()),
-        };
 
         let stdout_obj = std::io::stdout();
         let mut stdout = std::io::LineWriter::new(stdout_obj.lock());

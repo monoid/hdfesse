@@ -13,15 +13,18 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-use std::borrow::Cow;
-
-use crate::rpc;
-use crate::service;
+use crate::{
+    path::{Path, PathError},
+    rpc,
+    service,
+};
 use hdfesse_proto::hdfs::HdfsFileStatusProto;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum FsError {
+    #[error("`{0}': Invalid path name")]
+    Path(#[from] PathError),
     #[error("`{0}': No such file or directory")]
     NotFound(String),
     #[error(transparent)]
@@ -42,18 +45,18 @@ impl Hdfs {
         self.service.get_user()
     }
 
-    pub fn get_file_info(&mut self, src: Cow<str>) -> Result<HdfsFileStatusProto, FsError> {
+    pub fn get_file_info(&mut self, src: &Path<'_>) -> Result<HdfsFileStatusProto, FsError> {
         self.service
-            .getFileInfo(src.clone().into_owned())
+            .getFileInfo(src.to_path_string())
             .map_err(FsError::Rpc)?
-            .ok_or_else(|| FsError::NotFound(src.into_owned()))
+            .ok_or_else(|| FsError::NotFound(src.to_path_string()))
     }
 
     // TODO a sketch; one should check that dst exists or doesn't
     // exist and srcs do exist, etc.
-    pub fn rename(&mut self, src: Cow<str>, dst: Cow<str>) -> Result<(), FsError> {
+    pub fn rename(&mut self, src: &Path, dst: &Path<'_>) -> Result<(), FsError> {
         self.service
-            .rename(src.into_owned(), dst.into_owned())
+            .rename(src.to_path_string(), dst.to_path_string())
             .map_err(FsError::Rpc)?;
         Ok(())
     }

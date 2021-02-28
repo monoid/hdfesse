@@ -18,12 +18,13 @@
 mod errors;
 
 use hdfesse_proto::hdfs::{HdfsFileStatusProto, HdfsFileStatusProto_FileType};
-use libhdfesse::fs;
+use libhdfesse::{fs, path::Path, path::PathError};
 
 use std::convert::TryFrom;
-use std::ffi::CString;
+use std::ffi::{c_void, CStr, CString};
 use std::os::raw::{c_char, c_int, c_short};
 use std::ptr::null_mut;
+
 /**
 
 Drop-in replacement of libhdfs.
@@ -32,10 +33,6 @@ Based on the
 https://github.com/apache/hadoop/blob/a89ca56a1b0eb949f56e7c6c5c25fdf87914a02f/hadoop-hdfs-project/hadoop-hdfs-native-client/src/main/native/libhdfs/include/hdfs/hdfs.h
 
 */
-use std::{
-    borrow::Cow,
-    ffi::{c_void, CStr},
-};
 
 pub type tPort = u16;
 pub type tSize = i32;
@@ -312,8 +309,10 @@ pub unsafe extern "C" fn hdfsExists(fs: hdfsFS, path: *const c_char) -> c_int {
     let path = CStr::from_ptr(path).to_str();
     let fs = fs.as_mut(); // TODO unwrap?  Fail if it is null.
 
+    let path = path.map_err(PathError::Utf8).and_then(Path::new);
+
     match (fs, path) {
-        (Some(fs), Ok(path)) => match fs.get_file_info(Cow::Borrowed(path)) {
+        (Some(fs), Ok(path)) => match fs.get_file_info(&path) {
             Ok(_) => 1,
             Err(e) => match e {
                 // set_errno_with_hadoop_error handles it too, but
@@ -544,10 +543,12 @@ pub unsafe extern "C" fn hdfsGetPathInfo(fs: hdfsFS, path: *const c_char) -> *mu
     // uniformly.  Thus we allocate a Vec.
 
     let path = CStr::from_ptr(path).to_str();
+    let path = path.map_err(PathError::Utf8).and_then(Path::new);
+
     let fs = fs.as_mut();
 
     match (fs, path) {
-        (Some(fs), Ok(path)) => match fs.get_file_info(Cow::Borrowed(path)) {
+        (Some(fs), Ok(path)) => match fs.get_file_info(&path) {
             Ok(fstat) => {
                 // TODO as we deallocate as Box<[T]>, one can create
                 // it from Box<T> instead of Vec.

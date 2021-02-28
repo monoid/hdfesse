@@ -13,11 +13,9 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-use std::borrow::Cow;
-
 use super::Command;
 use anyhow::Result;
-use libhdfesse::fs::Hdfs;
+use libhdfesse::{fs::Hdfs, path::Path};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -50,7 +48,7 @@ impl<'a> Command for Mv<'a> {
         }
         for src in args.srcs {
             self.hdfs
-                .rename(Cow::Owned(src), Cow::Borrowed(&args.dst))?;
+                .rename(&Path::new(&src)?, &Path::new(&args.dst)?)?;
         }
         Ok(0)
     }

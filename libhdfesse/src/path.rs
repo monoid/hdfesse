@@ -38,6 +38,8 @@ const PATH_PERCENT_ENCODE_SET: &percent_encoding::AsciiSet = &percent_encoding::
 #[derive(Debug, Error)]
 pub enum PathError {
     #[error(transparent)]
+    Utf8(Utf8Error),
+    #[error(transparent)]
     BaseError(URIError),
     #[error(transparent)]
     PartError(URIReferenceError),
@@ -191,8 +193,8 @@ impl UriResolver {
         Ok(Self { default_uri })
     }
 
-    pub fn resolve<'a>(&'a self, path: &'a str) -> Result<Path, PathError> {
-        let uri: URIReference = hdfs_path_to_uri(path)?;
+    pub fn resolve<'a>(&self, path: &Path<'a>) -> Result<Path<'a>, PathError> {
+        let uri = &path.path;
         Ok(if uri.is_relative_path_reference() {
             let mut res: URIReference = self.default_uri.clone().into();
             let mut res_path = res.path().clone();
@@ -206,13 +208,13 @@ impl UriResolver {
             Path { path: res }
         } else if uri.is_absolute_path_reference() {
             let mut res: URIReference = self.default_uri.clone().into();
-            res.set_path(uri.into_parts().2)
+            res.set_path(uri.clone().into_parts().2)
                 .map_err(PathError::PartError)?;
             Path { path: res }
         } else {
             let mut res: URIReference = self.default_uri.clone().into();
             // TODO fragment can present.
-            let (mb_scheme, mb_auth, path, _mb_query, _mb_fragment) = uri.into_parts();
+            let (mb_scheme, mb_auth, path, _mb_query, _mb_fragment) = uri.clone().into_parts();
             if let Some(scheme) = mb_scheme {
                 res.set_scheme(Some(scheme)).map_err(PathError::PartError)?;
             }
@@ -309,6 +311,14 @@ impl<'a> Path<'a> {
     }
 }
 
+impl<'a> TryFrom<&'a str> for Path<'a> {
+    type Error = PathError;
+
+    fn try_from(value: &'a str) -> Result<Self, Self::Error> {
+        Path::new(value)
+    }
+}
+
 impl<'a> Display for Path<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // Well, the unwrap_or_else should never execute.
@@ -368,7 +378,9 @@ mod tests {
     fn test_resolve_relative() {
         let res = UriResolver::new("myhost", "myself", None, None).unwrap();
         assert_eq!(
-            res.resolve("test").unwrap().to_string(),
+            res.resolve(&"test".try_into().unwrap())
+                .unwrap()
+                .to_string(),
             "hdfs://myself@myhost/user/myself/test"
         );
     }
@@ -377,7 +389,9 @@ mod tests {
     fn test_resolve_relative_dot() {
         let res = UriResolver::new("myhost", "myself", None, None).unwrap();
         assert_eq!(
-            res.resolve("./test").unwrap().to_string(),
+            res.resolve(&"./test".try_into().unwrap())
+                .unwrap()
+                .to_string(),
             "hdfs://myself@myhost/user/myself/test"
         );
     }
@@ -386,7 +400,9 @@ mod tests {
     fn test_resolve_relative_dotdot() {
         let res = UriResolver::new("myhost", "myself", None, None).unwrap();
         assert_eq!(
-            res.resolve("../test").unwrap().to_string(),
+            res.resolve(&"../test".try_into().unwrap())
+                .unwrap()
+                .to_string(),
             "hdfs://myself@myhost/user/test"
         );
     }
@@ -395,7 +411,9 @@ mod tests {
     fn test_resolve_absolute() {
         let res = UriResolver::new("myhost", "myself", None, None).unwrap();
         assert_eq!(
-            res.resolve("/test").unwrap().to_string(),
+            res.resolve(&"/test".try_into().unwrap())
+                .unwrap()
+                .to_string(),
             "hdfs://myself@myhost/test"
         );
     }
@@ -404,7 +422,9 @@ mod tests {
     fn test_resolve_absolute2() {
         let res = UriResolver::new("myhost", "myself", None, None).unwrap();
         assert_eq!(
-            res.resolve("//test/me").unwrap().to_string(),
+            res.resolve(&"//test/me".try_into().unwrap())
+                .unwrap()
+                .to_string(),
             "hdfs://myself@test/me"
         );
     }
@@ -413,7 +433,9 @@ mod tests {
     fn test_resolve_absolute3() {
         let res = UriResolver::new("myhost", "myself", None, None).unwrap();
         assert_eq!(
-            res.resolve("///test").unwrap().to_string(),
+            res.resolve(&"///test".try_into().unwrap())
+                .unwrap()
+                .to_string(),
             "hdfs://myself@myhost/test"
         );
     }
@@ -422,7 +444,9 @@ mod tests {
     fn test_resolve_host_nouser() {
         let res = UriResolver::new("myhost", "myself", None, None).unwrap();
         assert_eq!(
-            res.resolve("//host/test").unwrap().to_string(),
+            res.resolve(&"//host/test".try_into().unwrap())
+                .unwrap()
+                .to_string(),
             "hdfs://myself@host/test"
         );
     }
@@ -431,7 +455,9 @@ mod tests {
     fn test_resolve_spaces() {
         let res = UriResolver::new("myhost", "myself", None, None).unwrap();
         assert_eq!(
-            res.resolve("/te st").unwrap().to_string(),
+            res.resolve(&"/te st".try_into().unwrap())
+                .unwrap()
+                .to_string(),
             "hdfs://myself@myhost/te st"
         );
     }
@@ -440,7 +466,7 @@ mod tests {
     fn test_resolve_full() {
         let res = UriResolver::new("myhost", "myself", None, None).unwrap();
         assert_eq!(
-            res.resolve("hdfs://test:pass@host/test")
+            res.resolve(&"hdfs://test:pass@host/test".try_into().unwrap())
                 .unwrap()
                 .to_string(),
             "hdfs://test:pass@host/test"

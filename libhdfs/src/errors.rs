@@ -50,6 +50,7 @@ pub(crate) unsafe fn set_errno_with_hadoop_error(e: fs::FsError) -> fs::FsError 
             rpc::RpcError::Io(e) => e.raw_os_error().unwrap_or(EINTERNAL),
             _ => r.get_class_name().map(get_error_code).unwrap_or(EINTERNAL),
         },
+        fs::FsError::Path(_) => libc::EINVAL,
     };
     libc::__errno_location().write(the_errno);
     e
