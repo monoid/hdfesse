@@ -18,6 +18,7 @@ use crate::{
     rpc,
     service,
 };
+pub use crate::fs_ls::LsGroupIterator;
 use hdfesse_proto::hdfs::HdfsFileStatusProto;
 use thiserror::Error;
 

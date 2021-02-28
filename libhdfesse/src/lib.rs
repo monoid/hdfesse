@@ -14,6 +14,7 @@
    limitations under the License.
 */
 pub mod fs;
+mod fs_ls;
 pub mod hdconfig;
 pub mod path;
 pub mod rpc;

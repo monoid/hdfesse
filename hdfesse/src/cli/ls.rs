@@ -18,11 +18,8 @@ use std::{cmp::Reverse, io::Write};
 use super::Command;
 use crate::cli::ls_output::{LineFormat, Record};
 use hdfesse_proto::hdfs::HdfsFileStatusProto;
-use libhdfesse::fs::{FsError, Hdfs};
+use libhdfesse::fs::{FsError, Hdfs, LsGroupIterator};
 use libhdfesse::path::{Path, PathError};
-use libhdfesse::rpc::RpcError;
-use libhdfesse::service::ClientNamenodeService;
-use protobuf::RepeatedField;
 use structopt::StructOpt;
 use thiserror::Error;
 
@@ -103,68 +100,6 @@ pub enum LsError {
     Fs(#[from] FsError),
     #[error(transparent)]
     LocalIo(std::io::Error),
-}
-
-// TODO it has to be moved to libhdfesse::fs and made public.
-struct LsGroupIterator<'a> {
-    path: &'a str,
-    prev_name: Option<Vec<u8>>,
-    len: Option<usize>,
-    count: usize,
-
-    service: &'a mut ClientNamenodeService,
-}
-
-impl<'a> LsGroupIterator<'a> {
-    fn new(service: &'a mut ClientNamenodeService, path: &'a str) -> Self {
-        Self {
-            path,
-            prev_name: Default::default(),
-            len: None,
-            count: 0,
-            service,
-        }
-    }
-
-    fn next_group(&mut self) -> Result<(usize, RepeatedField<HdfsFileStatusProto>), RpcError> {
-        let list_from = self.prev_name.take().unwrap_or_default();
-        let mut listing = self
-            .service
-            .getListing(self.path.to_owned(), list_from, false)?;
-        let partial_list = listing.mut_dirList().take_partialListing();
-
-        self.count += partial_list.len();
-        let remaining_len = listing.get_dirList().get_remainingEntries() as usize;
-        self.len = Some(self.count + remaining_len);
-
-        // Search further from the last value
-        // It is very unlikely that partial_list is empty and
-        // prev_name is None while remainingEntries is not zero.
-        // Perhaps, it should be reported as a server's invalid
-        // data.
-        self.prev_name = partial_list.last().map(|entry| entry.get_path().to_vec());
-
-        // The remaining_len returns number of items after the last
-        // element of the partial_list.  We return here remaining
-        // items including the partial_list.
-        Ok((remaining_len + partial_list.len(), partial_list))
-    }
-}
-
-impl<'a> Iterator for LsGroupIterator<'a> {
-    type Item = Result<(usize, RepeatedField<HdfsFileStatusProto>), RpcError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.len.map(|len| self.count >= len).unwrap_or(false) {
-            None
-        } else {
-            Some(self.next_group())
-        }
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (0, self.len)
-    }
 }
 
 pub struct Ls<'a> {
