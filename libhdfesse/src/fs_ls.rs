@@ -81,27 +81,29 @@ impl<'a> Iterator for LsGroupIterator<'a> {
     }
 }
 
+type KludgeIterator = itertools::Either<
+    std::iter::Map<
+        std::vec::IntoIter<HdfsFileStatusProto>,
+        fn(HdfsFileStatusProto) -> std::result::Result<HdfsFileStatusProto, FsError>,
+    >,
+    std::vec::IntoIter<Result<HdfsFileStatusProto, FsError>>,
+>;
+
 pub struct LsIterator<'a, F>
 where
-    F: FnMut(
-        Result<(usize, RepeatedField<HdfsFileStatusProto>), FsError>,
-    ) -> std::vec::IntoIter<Result<HdfsFileStatusProto, FsError>>,
+    F: FnMut(Result<(usize, RepeatedField<HdfsFileStatusProto>), FsError>) -> KludgeIterator,
 {
-    nested: FlatMap<
-        Peekable<LsGroupIterator<'a>>,
-        std::vec::IntoIter<Result<HdfsFileStatusProto, FsError>>,
-        F,
-    >,
+    nested: FlatMap<Peekable<LsGroupIterator<'a>>, KludgeIterator, F>,
 }
 
 impl<'a, F> LsIterator<'a, F>
 where
-    F: FnMut(
-        Result<(usize, RepeatedField<HdfsFileStatusProto>), FsError>,
-    ) -> std::vec::IntoIter<Result<HdfsFileStatusProto, FsError>>,
+    F: FnMut(Result<(usize, RepeatedField<HdfsFileStatusProto>), FsError>) -> KludgeIterator,
 {
     pub fn new(f: F, service: &'a mut ClientNamenodeService, path: &Path<'_>) -> Self {
         Self {
+            // TODO rewrite manually, as FlatMap doesn't seem to allow
+            // to peek.
             nested: LsGroupIterator::new(service, path).peekable().flat_map(f),
         }
     }
@@ -110,25 +112,17 @@ where
 pub(crate) fn ls_iter<'a>(
     service: &'a mut ClientNamenodeService,
     path: &Path<'_>,
-) -> LsIterator<
-    'a,
-    impl FnMut(
-        Result<(usize, RepeatedField<HdfsFileStatusProto>), FsError>,
-    ) -> std::vec::IntoIter<Result<HdfsFileStatusProto, FsError>>,
-> {
+) -> impl Iterator<Item = Result<HdfsFileStatusProto, FsError>> + 'a {
     LsIterator::new(
         |x| {
             match x {
-                Ok((_, data)) => {
-                    let oks: Vec<Result<_, _>> = data.into_iter().map(Ok).collect();
-                    oks.into_iter()
-                }
+                Ok((_, data)) => itertools::Either::Left(data.into_iter().map(Ok)),
                 Err(e) => {
                     // vec![A; 1] calls internal from_elem func that
                     // requires Clone. :(
                     let mut errs = Vec::with_capacity(1);
                     errs.push(Result::Err(e));
-                    errs.into_iter()
+                    itertools::Either::Right(errs.into_iter())
                 }
             }
         },
@@ -139,9 +133,7 @@ pub(crate) fn ls_iter<'a>(
 
 impl<'a, F> Iterator for LsIterator<'a, F>
 where
-    F: FnMut(
-        Result<(usize, RepeatedField<HdfsFileStatusProto>), FsError>,
-    ) -> std::vec::IntoIter<Result<HdfsFileStatusProto, FsError>>,
+    F: FnMut(Result<(usize, RepeatedField<HdfsFileStatusProto>), FsError>) -> KludgeIterator,
 {
     type Item = Result<HdfsFileStatusProto, FsError>;
 
