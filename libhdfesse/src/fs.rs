@@ -15,7 +15,7 @@
 */
 pub use crate::fs_ls::LsGroupIterator;
 use crate::{
-    fs_ls::ls_iter,
+    fs_ls::LsIterator,
     path::{Path, PathError},
     rpc, service,
 };
@@ -51,7 +51,10 @@ impl Hdfs {
         src: &Path<'_>,
     ) -> Result<impl Iterator<Item = Result<HdfsFileStatusProto, FsError>> + 's, FsError> {
         self.get_file_info(&src)?;
-        Ok(ls_iter(&mut self.service, &src))
+        Ok(LsIterator::new(LsGroupIterator::new(
+            &mut self.service,
+            &src,
+        )))
     }
 
     pub fn get_file_info(&mut self, src: &Path<'_>) -> Result<HdfsFileStatusProto, FsError> {

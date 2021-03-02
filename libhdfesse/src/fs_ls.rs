@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-use std::iter::{FlatMap, Peekable};
+use std::iter::{ExactSizeIterator, FusedIterator};
 
 use crate::{fs::FsError, path::Path, rpc::RpcError, service::ClientNamenodeService};
 use protobuf::RepeatedField;
@@ -75,69 +75,229 @@ impl<'a> Iterator for LsGroupIterator<'a> {
             Some(self.next_group().map_err(FsError::Rpc))
         }
     }
+}
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (0, self.len)
+pub(crate) struct LsIterator<CI, I, E> {
+    gi: Option<CI>,
+    current: Result<std::vec::IntoIter<I>, E>,
+    expected: usize,
+}
+
+impl<CI, I, E> LsIterator<CI, I, E>
+where
+    CI: Iterator<Item = Result<(usize, RepeatedField<I>), E>>,
+{
+    /// Fetches new chunk from the group iterator, if current chunk is empty.
+    fn ensure_new_data(&mut self) {
+        if let Some(ref mut gi) = self.gi {
+            // it is false for Err(_) because we never read after the error.
+            let should_fetch = self
+                .current
+                .as_ref()
+                .map(|it| it.len() == 0)
+                .unwrap_or(false);
+            if should_fetch {
+                if self.expected == 0 {
+                    // We have reached the end of the last chunk.
+                    // Nothing is remained.
+                    self.gi = None;
+                } else {
+                    match gi.next() {
+                        None => {
+                            self.gi = None;
+                        }
+                        Some(Ok((expected, new_data))) => {
+                            self.expected = expected;
+                            self.current = Ok(new_data.into_iter());
+                        }
+                        Some(Err(e)) => {
+                            self.expected = 1;
+                            self.current = Err(e);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    pub(crate) fn new(ci: CI) -> Self {
+        let mut it = LsIterator {
+            gi: Some(ci),
+            current: Ok(vec![].into_iter()),
+            expected: 1, // Fake value to fetch something
+        };
+        it.ensure_new_data();
+        it
     }
 }
 
-type KludgeIterator = itertools::Either<
-    std::iter::Map<
-        std::vec::IntoIter<HdfsFileStatusProto>,
-        fn(HdfsFileStatusProto) -> std::result::Result<HdfsFileStatusProto, FsError>,
-    >,
-    std::vec::IntoIter<Result<HdfsFileStatusProto, FsError>>,
->;
-
-pub struct LsIterator<'a, F>
+impl<CI, I, E> Iterator for LsIterator<CI, I, E>
 where
-    F: FnMut(Result<(usize, RepeatedField<HdfsFileStatusProto>), FsError>) -> KludgeIterator,
+    CI: Iterator<Item = Result<(usize, RepeatedField<I>), E>>,
 {
-    nested: FlatMap<Peekable<LsGroupIterator<'a>>, KludgeIterator, F>,
-}
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remain_len = match self.gi {
+            Some(_) => self.expected + self.current.as_ref().map(|it| it.len()).unwrap_or(0),
+            None => 0,
+        };
+        // Vec adds one, so we sub. :D
+        (remain_len.saturating_sub(1), Some(remain_len))
+    }
 
-impl<'a, F> LsIterator<'a, F>
-where
-    F: FnMut(Result<(usize, RepeatedField<HdfsFileStatusProto>), FsError>) -> KludgeIterator,
-{
-    pub fn new(f: F, service: &'a mut ClientNamenodeService, path: &Path<'_>) -> Self {
-        Self {
-            // TODO rewrite manually, as FlatMap doesn't seem to allow
-            // to peek.
-            nested: LsGroupIterator::new(service, path).peekable().flat_map(f),
+    type Item = Result<I, E>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.ensure_new_data();
+        match self.gi {
+            None => None,
+            Some(_) => {
+                match &mut self.current {
+                    Ok(it) => it.next().map(Ok),
+                    Err(_) => {
+                        let mut val = Ok(vec![].into_iter()); // Should not allocate!
+                        std::mem::swap(&mut self.current, &mut val);
+                        self.gi.take();
+                        Some(val.map(|_| unreachable!()))
+                    }
+                }
+            }
         }
     }
 }
 
-pub(crate) fn ls_iter<'a>(
-    service: &'a mut ClientNamenodeService,
-    path: &Path<'_>,
-) -> impl Iterator<Item = Result<HdfsFileStatusProto, FsError>> + 'a {
-    LsIterator::new(
-        |x| {
-            match x {
-                Ok((_, data)) => itertools::Either::Left(data.into_iter().map(Ok)),
-                Err(e) => {
-                    // vec![A; 1] calls internal from_elem func that
-                    // requires Clone. :(
-                    let mut errs = Vec::with_capacity(1);
-                    errs.push(Result::Err(e));
-                    itertools::Either::Right(errs.into_iter())
-                }
-            }
-        },
-        service,
-        path,
-    )
+impl<I, E, CI> FusedIterator for LsIterator<CI, I, E> where
+    CI: Iterator<Item = Result<(usize, RepeatedField<I>), E>>
+{
 }
 
-impl<'a, F> Iterator for LsIterator<'a, F>
-where
-    F: FnMut(Result<(usize, RepeatedField<HdfsFileStatusProto>), FsError>) -> KludgeIterator,
-{
-    type Item = Result<HdfsFileStatusProto, FsError>;
+// It is very enticing to implement ExactSizeIterator for the
+// LsIterator, however, we cannot guarantee that we will return exact
+// number of elments, as 1. error may happen, 2. new files may be
+// created in process.
 
-    fn next(&mut self) -> Option<Self::Item> {
-        self.nested.next()
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[derive(Eq, PartialEq, Debug)]
+    struct Error {}
+
+    #[test]
+    fn test_empty() {
+        let gi: Vec<Result<(usize, RepeatedField<i32>), Error>> =
+            vec![Ok((0, RepeatedField::new()))];
+        assert_eq!(LsIterator::new(gi.into_iter()).collect::<Vec<_>>(), vec![]);
+    }
+
+    #[test]
+    fn test_empty_size_hint() {
+        let gi: Vec<Result<(usize, RepeatedField<i32>), Error>> =
+            vec![Ok((0, RepeatedField::new()))];
+        assert_eq!(LsIterator::new(gi.into_iter()).size_hint(), (0, Some(0)));
+    }
+
+    #[test]
+    fn test_single() {
+        let gi: Vec<Result<(usize, RepeatedField<i32>), Error>> =
+            vec![Ok((0, RepeatedField::from(vec![1, 2])))];
+        assert_eq!(
+            LsIterator::new(gi.into_iter()).collect::<Vec<_>>(),
+            vec![Ok(1), Ok(2)]
+        );
+    }
+
+    #[test]
+    fn test_single_size_hint() {
+        let gi: Vec<Result<(usize, RepeatedField<i32>), Error>> =
+            vec![Ok((0, RepeatedField::from(vec![1, 2])))];
+        assert_eq!(LsIterator::new(gi.into_iter()).size_hint(), (1, Some(2)));
+    }
+
+    #[test]
+    fn test_chunks() {
+        let gi: Vec<Result<(usize, RepeatedField<i32>), Error>> = vec![
+            Ok((2, RepeatedField::from(vec![1, 2]))),
+            Ok((0, RepeatedField::from(vec![3, 4]))),
+        ];
+        assert_eq!(
+            LsIterator::new(gi.into_iter()).collect::<Vec<_>>(),
+            vec![Ok(1), Ok(2), Ok(3), Ok(4)]
+        );
+    }
+
+    #[test]
+    fn test_chunks_size_hint() {
+        let gi: Vec<Result<(usize, RepeatedField<i32>), Error>> = vec![
+            Ok((2, RepeatedField::from(vec![1, 2]))),
+            Ok((0, RepeatedField::from(vec![3, 4]))),
+        ];
+        let mut it = LsIterator::new(gi.into_iter());
+        assert_eq!(it.size_hint(), (3, Some(4)));
+        it.next();
+        assert_eq!(it.size_hint(), (2, Some(3)));
+        it.next();
+        assert_eq!(it.size_hint(), (1, Some(2)));
+        it.next();
+        assert_eq!(it.size_hint(), (0, Some(1)));
+        it.next();
+        assert_eq!(it.size_hint(), (0, Some(0)));
+    }
+
+    #[test]
+    fn test_chunk_error() {
+        let gi: Vec<Result<(usize, RepeatedField<i32>), Error>> = vec![
+            Ok((2, RepeatedField::from(vec![1, 2]))),
+            Err(Error {}),
+            Ok((0, RepeatedField::from(vec![3, 4]))),
+        ];
+        assert_eq!(
+            LsIterator::new(gi.into_iter()).collect::<Vec<_>>(),
+            vec![Ok(1), Ok(2), Err(Error {})]
+        );
+    }
+
+    #[test]
+    fn test_chunk_error_size_hint() {
+        let gi: Vec<Result<(usize, RepeatedField<i32>), Error>> = vec![
+            Ok((2, RepeatedField::from(vec![1, 2]))),
+            Err(Error {}),
+            Ok((0, RepeatedField::from(vec![3, 4]))),
+        ];
+        let mut it = LsIterator::new(gi.into_iter());
+        assert_eq!(it.size_hint(), (3, Some(4)));
+        it.next().unwrap().unwrap();
+        assert_eq!(it.size_hint(), (2, Some(3)));
+        it.next().unwrap().unwrap();
+        assert_eq!(it.size_hint(), (1, Some(2)));
+        it.next().unwrap().unwrap_err();
+        assert_eq!(it.size_hint(), (0, Some(0)));
+        it.next();
+        assert_eq!(it.size_hint(), (0, Some(0)));
+    }
+
+    #[test]
+    fn test_first_error() {
+        let gi: Vec<Result<(usize, RepeatedField<i32>), Error>> = vec![
+            Err(Error {}),
+            Ok((2, RepeatedField::from(vec![1, 2]))),
+            Ok((0, RepeatedField::from(vec![3, 4]))),
+        ];
+        assert_eq!(
+            LsIterator::new(gi.into_iter()).collect::<Vec<_>>(),
+            vec![Err(Error {})]
+        );
+    }
+
+    #[test]
+    fn test_first_error_size_hint() {
+        let gi: Vec<Result<(usize, RepeatedField<i32>), Error>> = vec![
+            Err(Error {}),
+            Ok((2, RepeatedField::from(vec![1, 2]))),
+            Ok((0, RepeatedField::from(vec![3, 4]))),
+        ];
+        let mut it = LsIterator::new(gi.into_iter());
+        assert_eq!(it.size_hint(), (0, Some(1)));
+        it.next();
+        assert_eq!(it.size_hint(), (0, Some(0)));
     }
 }
