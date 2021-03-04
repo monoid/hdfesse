@@ -17,7 +17,7 @@ use std::{cmp::Reverse, io::Write};
 
 use super::Command;
 use crate::cli::ls_output::{LineFormat, Record};
-use libhdfesse::fs::{FsError, Hdfs};
+use libhdfesse::fs::{Hdfs, HdfsError};
 use libhdfesse::path::{Path, PathError};
 use structopt::StructOpt;
 use thiserror::Error;
@@ -96,7 +96,7 @@ pub enum LsError {
     #[error(transparent)]
     Uri(PathError),
     #[error("ls: {0}")]
-    Fs(#[from] FsError),
+    Fs(#[from] HdfsError),
     #[error(transparent)]
     LocalIo(std::io::Error),
 }
@@ -126,7 +126,7 @@ impl<'a> Ls<'a> {
             self.hdfs
                 .list_status(&path)?
                 .map(|res| res.map(|ent| Record::from_hdfs_file_status(ent, args.atime)))
-                .collect::<Result<Vec<_>, FsError>>()?
+                .collect::<Result<Vec<_>, HdfsError>>()?
         };
 
         if !args.recursive {

@@ -13,6 +13,8 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
+use std::fmt::Display;
+
 pub use crate::fs_ls::LsGroupIterator;
 use crate::{
     fs_ls::LsIterator,
@@ -33,6 +35,50 @@ pub enum FsError {
     Rpc(rpc::RpcError),
 }
 
+#[derive(Debug)]
+pub enum HdfsErrorKind {
+    Src,
+    Dst,
+    Op,
+}
+
+impl Display for HdfsErrorKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            HdfsErrorKind::Src => "invalid source",
+            HdfsErrorKind::Dst => "invalid destination",
+            HdfsErrorKind::Op => "failed operation",
+        })
+    }
+}
+#[derive(Debug, Error)]
+#[error("{}", .source)]
+pub struct HdfsError {
+    pub kind: HdfsErrorKind,
+    pub source: FsError,
+}
+
+impl HdfsError {
+    fn src<E: Into<FsError>>(source: E) -> Self {
+        Self {
+            kind: HdfsErrorKind::Src,
+            source: source.into(),
+        }
+    }
+    fn dst<E: Into<FsError>>(source: E) -> Self {
+        Self {
+            kind: HdfsErrorKind::Dst,
+            source: source.into(),
+        }
+    }
+    fn op<E: Into<FsError>>(source: E) -> Self {
+        Self {
+            kind: HdfsErrorKind::Op,
+            source: source.into(),
+        }
+    }
+}
+
 pub struct Hdfs {
     service: service::ClientNamenodeService,
     resolve: UriResolver,
@@ -50,39 +96,44 @@ impl Hdfs {
     pub fn list_status<'s>(
         &'s mut self,
         src: &Path<'_>,
-    ) -> Result<impl Iterator<Item = Result<HdfsFileStatusProto, FsError>> + 's, FsError> {
-        let src = self.resolve.resolve(src)?;
+    ) -> Result<impl Iterator<Item = Result<HdfsFileStatusProto, HdfsError>> + 's, HdfsError> {
+        let src = self.resolve.resolve(src).map_err(HdfsError::src)?;
 
         self.get_file_info(&src)?;
-        Ok(LsIterator::new(LsGroupIterator::new(
-            &mut self.service,
-            &src,
-        )))
+
+        Ok(
+            LsIterator::new(LsGroupIterator::new(&mut self.service, &src))
+                .map(|r| r.map_err(HdfsError::op)),
+        )
     }
 
-    pub fn get_file_info(&mut self, src: &Path<'_>) -> Result<HdfsFileStatusProto, FsError> {
-        let src = self.resolve.resolve(src)?;
+    pub fn get_file_info(&mut self, src: &Path<'_>) -> Result<HdfsFileStatusProto, HdfsError> {
+        let src = self.resolve.resolve(src).map_err(HdfsError::src)?;
 
         self.service
             .getFileInfo(src.to_path_string())
-            .map_err(FsError::Rpc)?
-            .ok_or_else(|| FsError::NotFound(src.to_path_string()))
+            .map_err(FsError::Rpc)
+            .map_err(HdfsError::op)?
+            .ok_or_else(|| HdfsError::src(FsError::NotFound(src.to_path_string())))
     }
 
     // TODO a sketch; one should check that dst exists or doesn't
     // exist and srcs do exist, etc.
-    pub fn rename(&mut self, src: &Path, dst: &Path<'_>) -> Result<(), FsError> {
-        let src = self.resolve.resolve(src)?;
-        let dst = self.resolve.resolve(dst)?;
+    pub fn rename(&mut self, src: &Path, dst: &Path<'_>) -> Result<(), HdfsError> {
+        let src = self.resolve.resolve(src).map_err(HdfsError::src)?;
+        let dst = self.resolve.resolve(dst).map_err(HdfsError::dst)?;
 
         self.service
             .rename(src.to_path_string(), dst.to_path_string())
-            .map_err(FsError::Rpc)?;
+            .map_err(FsError::Rpc)
+            .map_err(HdfsError::op)?;
         Ok(())
     }
 
     #[inline]
-    pub fn shutdown(self) -> Result<(), FsError> {
-        self.service.shutdown().map_err(FsError::Rpc)
+    pub fn shutdown(self) -> Result<(), HdfsError> {
+        self.service
+            .shutdown()
+            .map_err(|e| HdfsError::op(FsError::Rpc(e)))
     }
 }

@@ -314,12 +314,12 @@ pub unsafe extern "C" fn hdfsExists(fs: hdfsFS, path: *const c_char) -> c_int {
     match (fs, path) {
         (Some(fs), Ok(path)) => match fs.get_file_info(&path) {
             Ok(_) => 1,
-            Err(e) => match e {
+            Err(e) => match e.source {
                 // set_errno_with_hadoop_error handles it too, but
                 // for this function it is a normal situation.
                 fs::FsError::NotFound(_) => 0,
                 _ => {
-                    errors::set_errno_with_hadoop_error(e);
+                    errors::set_errno_with_hadoop_error(e.source);
                     -1
                 }
             },
@@ -561,7 +561,7 @@ pub unsafe extern "C" fn hdfsGetPathInfo(fs: hdfsFS, path: *const c_char) -> *mu
                 ptr
             }
             Err(e) => {
-                errors::set_errno_with_hadoop_error(e);
+                errors::set_errno_with_hadoop_error(e.source);
                 null_mut()
             }
         },
