@@ -16,6 +16,7 @@
 mod cli;
 use anyhow::Result;
 use cli::Command;
+use libhdfesse::path::UriResolver;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -58,7 +59,8 @@ fn main() -> Result<()> {
     }?;
 
     let service = libhdfesse::service::ClientNamenodeService::new(client);
-    let mut hdfs = libhdfesse::fs::Hdfs::new(service);
+    let resolve = UriResolver::new("STUB", service.get_user(), None, None)?;
+    let mut hdfs = libhdfesse::fs::Hdfs::new(service, resolve);
 
     let retcode = match opt.subcmd {
         TopSubcmd::Dfs(dfs) => match dfs {

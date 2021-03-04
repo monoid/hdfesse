@@ -16,6 +16,7 @@
 pub use crate::fs_ls::LsGroupIterator;
 use crate::{
     fs_ls::LsIterator,
+    path::UriResolver,
     path::{Path, PathError},
     rpc, service,
 };
@@ -33,13 +34,13 @@ pub enum FsError {
 }
 
 pub struct Hdfs {
-    // TODO make it private after moving here LsGroupiterator.
-    pub service: service::ClientNamenodeService,
+    service: service::ClientNamenodeService,
+    resolve: UriResolver,
 }
 
 impl Hdfs {
-    pub fn new(service: service::ClientNamenodeService) -> Self {
-        Self { service }
+    pub fn new(service: service::ClientNamenodeService, resolve: UriResolver) -> Self {
+        Self { service, resolve }
     }
 
     pub fn get_user(&self) -> &str {
@@ -50,6 +51,8 @@ impl Hdfs {
         &'s mut self,
         src: &Path<'_>,
     ) -> Result<impl Iterator<Item = Result<HdfsFileStatusProto, FsError>> + 's, FsError> {
+        let src = self.resolve.resolve(src)?;
+
         self.get_file_info(&src)?;
         Ok(LsIterator::new(LsGroupIterator::new(
             &mut self.service,
@@ -58,6 +61,8 @@ impl Hdfs {
     }
 
     pub fn get_file_info(&mut self, src: &Path<'_>) -> Result<HdfsFileStatusProto, FsError> {
+        let src = self.resolve.resolve(src)?;
+
         self.service
             .getFileInfo(src.to_path_string())
             .map_err(FsError::Rpc)?
@@ -67,6 +72,9 @@ impl Hdfs {
     // TODO a sketch; one should check that dst exists or doesn't
     // exist and srcs do exist, etc.
     pub fn rename(&mut self, src: &Path, dst: &Path<'_>) -> Result<(), FsError> {
+        let src = self.resolve.resolve(src)?;
+        let dst = self.resolve.resolve(dst)?;
+
         self.service
             .rename(src.to_path_string(), dst.to_path_string())
             .map_err(FsError::Rpc)?;
