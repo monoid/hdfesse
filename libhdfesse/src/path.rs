@@ -141,7 +141,11 @@ pub fn uri_path_to_hdfs_path(uriref: &URIReference<'_>) -> Result<String, Utf8Er
         result.push('#');
         result.push_str(fragment.as_str()); // not decoded!
     }
-    Ok(result)
+    Ok(if result.is_empty() {
+        ".".to_owned()
+    } else {
+        result
+    })
 }
 
 pub struct UriResolver {
@@ -302,12 +306,17 @@ impl<'a> Path<'a> {
     pub fn to_path_string(&self) -> String {
         let path_string = self.path.path().to_string();
         // is decoded!
-        match percent_encoding::percent_decode_str(&path_string)
+        let path = match percent_encoding::percent_decode_str(&path_string)
             .decode_utf8()
             .unwrap()
         {
             Cow::Borrowed(_) => path_string,
             Cow::Owned(s) => s,
+        };
+        if path.is_empty() {
+            ".".to_owned()
+        } else {
+            path
         }
     }
 }
@@ -553,5 +562,17 @@ mod tests {
     fn test_path_join_empty() {
         let path = Path::new("../path".into()).unwrap();
         assert_eq!(path.join("").unwrap().to_string(), "../path");
+    }
+
+    #[test]
+    fn test_path_join_dot_empty() {
+        let path = Path::new(".".into()).unwrap();
+        assert_eq!(path.join("").unwrap().to_string(), ".");
+    }
+
+    #[test]
+    fn test_path_string_join_dot_empty() {
+        let path = Path::new(".".into()).unwrap();
+        assert_eq!(path.join("").unwrap().to_path_string(), ".");
     }
 }
