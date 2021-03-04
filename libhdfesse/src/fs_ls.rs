@@ -83,9 +83,10 @@ pub(crate) struct LsIterator<CI, I, E> {
     expected: usize,
 }
 
-impl<CI, I, E> LsIterator<CI, I, E>
+impl<CI, I, E, V> LsIterator<CI, I, E>
 where
-    CI: Iterator<Item = Result<(usize, RepeatedField<I>), E>>,
+    CI: Iterator<Item = Result<(usize, V), E>>,
+    V: IntoIterator<IntoIter = std::vec::IntoIter<I>>,
 {
     /// Fetches new chunk from the group iterator, if current chunk is empty.
     fn ensure_new_data(&mut self) {
@@ -131,9 +132,10 @@ where
     }
 }
 
-impl<CI, I, E> Iterator for LsIterator<CI, I, E>
+impl<CI, I, E, V> Iterator for LsIterator<CI, I, E>
 where
-    CI: Iterator<Item = Result<(usize, RepeatedField<I>), E>>,
+    CI: Iterator<Item = Result<(usize, V), E>>,
+    V: IntoIterator<IntoIter = std::vec::IntoIter<I>>,
 {
     fn size_hint(&self) -> (usize, Option<usize>) {
         let remain_len = match self.gi {
@@ -165,8 +167,10 @@ where
     }
 }
 
-impl<I, E, CI> FusedIterator for LsIterator<CI, I, E> where
-    CI: Iterator<Item = Result<(usize, RepeatedField<I>), E>>
+impl<I, E, CI, V> FusedIterator for LsIterator<CI, I, E>
+where
+    CI: Iterator<Item = Result<(usize, V), E>>,
+    V: IntoIterator<IntoIter = std::vec::IntoIter<I>>,
 {
 }
 
@@ -184,22 +188,31 @@ mod test {
 
     #[test]
     fn test_empty() {
-        let gi: Vec<Result<(usize, RepeatedField<i32>), Error>> =
-            vec![Ok((0, RepeatedField::new()))];
+        let gi: Vec<Result<(usize, Vec<i32>), Error>> = vec![Ok((0, vec![]))];
         assert_eq!(LsIterator::new(gi.into_iter()).collect::<Vec<_>>(), vec![]);
     }
 
     #[test]
     fn test_empty_size_hint() {
-        let gi: Vec<Result<(usize, RepeatedField<i32>), Error>> =
-            vec![Ok((0, RepeatedField::new()))];
+        let gi: Vec<Result<(usize, Vec<i32>), Error>> = vec![Ok((0, vec![]))];
+        assert_eq!(LsIterator::new(gi.into_iter()).size_hint(), (0, Some(0)));
+    }
+
+    #[test]
+    fn test_really_empty() {
+        let gi: Vec<Result<(usize, Vec<i32>), Error>> = vec![];
+        assert_eq!(LsIterator::new(gi.into_iter()).collect::<Vec<_>>(), vec![]);
+    }
+
+    #[test]
+    fn test_really_empty_size_hint() {
+        let gi: Vec<Result<(usize, Vec<i32>), Error>> = vec![];
         assert_eq!(LsIterator::new(gi.into_iter()).size_hint(), (0, Some(0)));
     }
 
     #[test]
     fn test_single() {
-        let gi: Vec<Result<(usize, RepeatedField<i32>), Error>> =
-            vec![Ok((0, RepeatedField::from(vec![1, 2])))];
+        let gi: Vec<Result<(usize, Vec<i32>), Error>> = vec![Ok((0, vec![1, 2]))];
         assert_eq!(
             LsIterator::new(gi.into_iter()).collect::<Vec<_>>(),
             vec![Ok(1), Ok(2)]
@@ -208,17 +221,14 @@ mod test {
 
     #[test]
     fn test_single_size_hint() {
-        let gi: Vec<Result<(usize, RepeatedField<i32>), Error>> =
-            vec![Ok((0, RepeatedField::from(vec![1, 2])))];
+        let gi: Vec<Result<(usize, Vec<i32>), Error>> = vec![Ok((0, vec![1, 2]))];
         assert_eq!(LsIterator::new(gi.into_iter()).size_hint(), (1, Some(2)));
     }
 
     #[test]
     fn test_chunks() {
-        let gi: Vec<Result<(usize, RepeatedField<i32>), Error>> = vec![
-            Ok((2, RepeatedField::from(vec![1, 2]))),
-            Ok((0, RepeatedField::from(vec![3, 4]))),
-        ];
+        let gi: Vec<Result<(usize, Vec<i32>), Error>> =
+            vec![Ok((2, vec![1, 2])), Ok((0, vec![3, 4]))];
         assert_eq!(
             LsIterator::new(gi.into_iter()).collect::<Vec<_>>(),
             vec![Ok(1), Ok(2), Ok(3), Ok(4)]
@@ -227,10 +237,8 @@ mod test {
 
     #[test]
     fn test_chunks_size_hint() {
-        let gi: Vec<Result<(usize, RepeatedField<i32>), Error>> = vec![
-            Ok((2, RepeatedField::from(vec![1, 2]))),
-            Ok((0, RepeatedField::from(vec![3, 4]))),
-        ];
+        let gi: Vec<Result<(usize, Vec<i32>), Error>> =
+            vec![Ok((2, vec![1, 2])), Ok((0, vec![3, 4]))];
         let mut it = LsIterator::new(gi.into_iter());
         assert_eq!(it.size_hint(), (3, Some(4)));
         it.next();
@@ -245,11 +253,8 @@ mod test {
 
     #[test]
     fn test_chunk_error() {
-        let gi: Vec<Result<(usize, RepeatedField<i32>), Error>> = vec![
-            Ok((2, RepeatedField::from(vec![1, 2]))),
-            Err(Error {}),
-            Ok((0, RepeatedField::from(vec![3, 4]))),
-        ];
+        let gi: Vec<Result<(usize, Vec<i32>), Error>> =
+            vec![Ok((2, vec![1, 2])), Err(Error {}), Ok((0, vec![3, 4]))];
         assert_eq!(
             LsIterator::new(gi.into_iter()).collect::<Vec<_>>(),
             vec![Ok(1), Ok(2), Err(Error {})]
@@ -258,11 +263,8 @@ mod test {
 
     #[test]
     fn test_chunk_error_size_hint() {
-        let gi: Vec<Result<(usize, RepeatedField<i32>), Error>> = vec![
-            Ok((2, RepeatedField::from(vec![1, 2]))),
-            Err(Error {}),
-            Ok((0, RepeatedField::from(vec![3, 4]))),
-        ];
+        let gi: Vec<Result<(usize, Vec<i32>), Error>> =
+            vec![Ok((2, vec![1, 2])), Err(Error {}), Ok((0, vec![3, 4]))];
         let mut it = LsIterator::new(gi.into_iter());
         assert_eq!(it.size_hint(), (3, Some(4)));
         it.next().unwrap().unwrap();
@@ -277,11 +279,8 @@ mod test {
 
     #[test]
     fn test_first_error() {
-        let gi: Vec<Result<(usize, RepeatedField<i32>), Error>> = vec![
-            Err(Error {}),
-            Ok((2, RepeatedField::from(vec![1, 2]))),
-            Ok((0, RepeatedField::from(vec![3, 4]))),
-        ];
+        let gi: Vec<Result<(usize, Vec<i32>), Error>> =
+            vec![Err(Error {}), Ok((2, vec![1, 2])), Ok((0, vec![3, 4]))];
         assert_eq!(
             LsIterator::new(gi.into_iter()).collect::<Vec<_>>(),
             vec![Err(Error {})]
@@ -290,11 +289,8 @@ mod test {
 
     #[test]
     fn test_first_error_size_hint() {
-        let gi: Vec<Result<(usize, RepeatedField<i32>), Error>> = vec![
-            Err(Error {}),
-            Ok((2, RepeatedField::from(vec![1, 2]))),
-            Ok((0, RepeatedField::from(vec![3, 4]))),
-        ];
+        let gi: Vec<Result<(usize, Vec<i32>), Error>> =
+            vec![Err(Error {}), Ok((2, vec![1, 2])), Ok((0, vec![3, 4]))];
         let mut it = LsIterator::new(gi.into_iter());
         assert_eq!(it.size_hint(), (0, Some(1)));
         it.next();
