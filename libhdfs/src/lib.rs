@@ -518,13 +518,57 @@ impl hdfsFileInfo {
     }
 }
 
+/**
+
+Return allocated single struct hdfsFileInfo with path info.
+
+# Safety
+
+fs value should be a value constructed with hdfs*Connect* family of
+functions, and path is a null-terminated C string. numEntry points to
+memory where length is written in case of success.
+ */
 #[no_mangle]
-pub extern "C" fn hdfsListDirectory(
-    _fs: hdfsFS,
-    _path: c_char,
-    _numEntries: *mut c_int,
+pub unsafe extern "C" fn hdfsListDirectory(
+    fs: hdfsFS,
+    path: *const c_char,
+    numEntries: *mut c_int,
 ) -> *mut hdfsFileInfo {
-    unimplemented!()
+    match hdfs_list_directory_impl(fs, path) {
+        Ok(data) => {
+            let mut sl = data.into_boxed_slice();
+            let ptr = sl.as_mut_ptr();
+            numEntries.write(sl.len() as _);
+            std::mem::forget(sl);
+            ptr
+        }
+        Err(e) => {
+            errors::set_errno_with_hadoop_error(e);
+            null_mut()
+        }
+    }
+}
+
+unsafe fn hdfs_list_directory_impl(
+    fs: hdfsFS,
+    path: *const c_char,
+) -> Result<Vec<hdfsFileInfo>, LibError> {
+    let path = CStr::from_ptr(path).to_str();
+    let path = path
+        .map_err(PathError::Utf8)
+        .and_then(Path::new)
+        .map_err(fs::HdfsError::src)?;
+
+    let fs = fs.as_mut().ok_or(LibError::Null)?;
+
+    let stat_iter = fs.list_status(&path)?;
+
+    stat_iter
+        .map(|r| {
+            r.map_err(LibError::Hdfs)
+                .and_then(|entry| hdfsFileInfo::try_from(&entry).map_err(LibError::NulString))
+        })
+        .collect()
 }
 
 /**
