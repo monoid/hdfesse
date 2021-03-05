@@ -160,6 +160,7 @@ dependencies = [
  "libc",
  "libhdfesse",
  "phf",
+ "thiserror",
 ]
 
 [[package]]

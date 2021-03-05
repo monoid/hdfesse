@@ -12,6 +12,7 @@ libc = "0.2"
 libhdfesse = { path = "../libhdfesse" }
 hdfesse_proto = { path = "../hdfesse_proto" }
 phf = { version = "0.8", features = ["macros"] }
+thiserror = "1.0"
 
 [lib]
 crate-type = ["cdylib"]

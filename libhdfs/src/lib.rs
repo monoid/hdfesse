@@ -17,6 +17,7 @@
 #![allow(non_camel_case_types)]
 mod errors;
 
+use crate::errors::LibError;
 use hdfesse_proto::hdfs::{HdfsFileStatusProto, HdfsFileStatusProto_FileType};
 use libhdfesse::{fs, path::Path, path::PathError};
 
@@ -319,7 +320,7 @@ pub unsafe extern "C" fn hdfsExists(fs: hdfsFS, path: *const c_char) -> c_int {
                 // for this function it is a normal situation.
                 fs::FsError::NotFound(_) => 0,
                 _ => {
-                    errors::set_errno_with_hadoop_error(e.source);
+                    errors::set_errno_with_hadoop_error(e);
                     -1
                 }
             },
@@ -497,7 +498,7 @@ impl TryFrom<&HdfsFileStatusProto> for hdfsFileInfo {
             mReplication: fstat.get_block_replication() as _,
             mBlockSize: fstat.get_blocksize() as _,
             // TODO the original libhdfs has an ugly hack: it places
-            // another struct (extInfo just behind the mOwner allocated string.
+            // another struct (extInfo) just behind the mOwner allocated string.
             // And extInfo.flags is updated with isEncrypted() flag.
             mOwner: mOwner.into_raw(),
             mGroup: mGroup.into_raw(),
@@ -548,7 +549,7 @@ pub unsafe extern "C" fn hdfsGetPathInfo(fs: hdfsFS, path: *const c_char) -> *mu
     let fs = fs.as_mut();
 
     match (fs, path) {
-        (Some(fs), Ok(path)) => match fs.get_file_info(&path) {
+        (Some(fs), Ok(path)) => match fs.get_file_info(&path).map_err(LibError::Hdfs) {
             Ok(fstat) => {
                 // TODO as we deallocate as Box<[T]>, one can create
                 // it from Box<T> instead of Vec.
@@ -561,7 +562,7 @@ pub unsafe extern "C" fn hdfsGetPathInfo(fs: hdfsFS, path: *const c_char) -> *mu
                 ptr
             }
             Err(e) => {
-                errors::set_errno_with_hadoop_error(e.source);
+                errors::set_errno_with_hadoop_error(e);
                 null_mut()
             }
         },
