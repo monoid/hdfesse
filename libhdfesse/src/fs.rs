@@ -51,6 +51,7 @@ impl Display for HdfsErrorKind {
         })
     }
 }
+
 #[derive(Debug, Error)]
 #[error("{}", .source)]
 pub struct HdfsError {
@@ -59,19 +60,19 @@ pub struct HdfsError {
 }
 
 impl HdfsError {
-    fn src<E: Into<FsError>>(source: E) -> Self {
+    pub fn src<E: Into<FsError>>(source: E) -> Self {
         Self {
             kind: HdfsErrorKind::Src,
             source: source.into(),
         }
     }
-    fn dst<E: Into<FsError>>(source: E) -> Self {
+    pub fn dst<E: Into<FsError>>(source: E) -> Self {
         Self {
             kind: HdfsErrorKind::Dst,
             source: source.into(),
         }
     }
-    fn op<E: Into<FsError>>(source: E) -> Self {
+    pub fn op<E: Into<FsError>>(source: E) -> Self {
         Self {
             kind: HdfsErrorKind::Op,
             source: source.into(),
