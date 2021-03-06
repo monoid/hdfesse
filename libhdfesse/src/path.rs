@@ -45,6 +45,24 @@ pub enum PathError {
     PartError(URIReferenceError),
 }
 
+fn drop_empty_segments(mut path: uriparse::Path) -> uriparse::Path {
+    path.normalize(true);
+    if (path.segments().len() > 1) & path.segments().iter().any(|seg| seg.is_empty()) {
+        let mut new_path = uriparse::Path::try_from("").unwrap(); // Well...  I do not expect it to fail.
+        new_path.set_absolute(path.is_absolute());
+        for seg in path.segments() {
+            if !seg.is_empty() {
+                // cannot fail because length is smaller than orignal path,
+                // Segment converts to Segment without failure :)
+                new_path.push(seg.clone()).unwrap();
+            }
+        }
+        new_path
+    } else {
+        path
+    }
+}
+
 /**
  * Convert HDFS path to an URIReference.  They look similar, but HDFS
  * path is never percent-encoded, and URI/URIReference is always
@@ -62,7 +80,7 @@ pub enum PathError {
  *
  * This function follows org/apache/haddop/fs/Path.java from Hadoop.
  */
-pub fn hdfs_path_to_uri(path: &str) -> Result<URIReference<'static>, PathError> {
+fn hdfs_path_to_uri(path: &str) -> Result<URIReference<'static>, PathError> {
     // I wish split_once was stable.
     let mut scheme_split = path.splitn(2, ':');
     let maybe_scheme = scheme_split.next().unwrap();
@@ -88,12 +106,14 @@ pub fn hdfs_path_to_uri(path: &str) -> Result<URIReference<'static>, PathError> 
 
     let percent_path =
         percent_encoding::utf8_percent_encode(path, PATH_PERCENT_ENCODE_SET).to_string();
-    let mut uri_builder = URIReference::builder().with_path(
+    let path = drop_empty_segments(
         percent_path
             .as_str()
             .try_into()
             .map_err(|e: uriparse::PathError| PathError::PartError(e.into()))?,
     );
+
+    let mut uri_builder = URIReference::builder().with_path(path);
     if let Some(scheme) = scheme {
         uri_builder = uri_builder.with_scheme(Some(
             scheme
@@ -268,29 +288,15 @@ impl<'a> Path<'a> {
         // TODO uriparse::RelativeReference.
         let more_uri = hdfs_path_to_uri(more)?;
 
-        let (scheme, authority, mut pre_path, query, fragment) = new_path.into_parts();
+        let (scheme, authority, mut path, query, fragment) = new_path.into_parts();
 
         for more_segment in more_uri.path().segments() {
-            pre_path.push(more_segment.clone())?;
+            path.push(more_segment.clone())?;
         }
-        pre_path.normalize(true);
+        path.normalize(true);
 
-        // Remove empty segments to avoid path//like///this.
-        //
-        // TODO one could remove empty segments for input paths
-        // instead: in the hdfs_path_to_uri.
-        let path = if pre_path.segments().iter().any(|seg| seg.is_empty()) {
-            let mut path = uriparse::Path::try_from("")?; // Well...  I do not expect it to fail.
-            path.set_absolute(pre_path.is_absolute());
-            for seg in pre_path.segments() {
-                if !seg.is_empty() {
-                    path.push(seg.clone())?;
-                }
-            }
-            path
-        } else {
-            pre_path
-        };
+        // We don't need to remove empty segments in the result as
+        // both joining parts do not have them.
 
         Ok(Path {
             path: URIReference::from_parts(scheme, authority, path, query, fragment)?,
@@ -574,5 +580,12 @@ mod tests {
     fn test_path_string_join_dot_empty() {
         let path = Path::new(".".into()).unwrap();
         assert_eq!(path.join("").unwrap().to_path_string(), ".");
+    }
+
+    #[test]
+    fn test_path_empty_segs() {
+        let path = Path::new("/test//me///").unwrap();
+        let join = path.join("/unexpected////it///").unwrap();
+        assert_eq!(join.to_path_string(), "/test/me/unexpected/it");
     }
 }
