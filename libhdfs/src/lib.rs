@@ -518,7 +518,7 @@ impl TryFrom<&HdfsFileStatusProto> for hdfsFileInfo {
             owner_file_info_offset + std::mem::size_of::<hdfsExtendedFileInfo>();
         // Safe because we just allocate memory
         let owner_buffer = unsafe { libc::malloc(owner_file_info_size) } as *mut u8;
-        if owner_buffer == null_mut() {
+        if owner_buffer.is_null() {
             return Err(LibError::Oom);
         }
 
