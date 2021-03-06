@@ -21,13 +21,15 @@ use thiserror::Error;
 This type incapsulates both HDFS-related errors and C-specific errors.
 */
 #[derive(Debug, Error)]
-pub(crate) enum LibError {
+pub enum LibError {
     #[error(transparent)]
     Hdfs(#[from] fs::HdfsError),
     #[error(transparent)]
     NulString(#[from] std::ffi::NulError),
     #[error("null pointer")]
     Null,
+    #[error("OOM allocating")]
+    Oom,
 }
 
 static EXCEPTION_INFO: ::phf::Map<&'_ str, c_int> = ::phf::phf_map! {
@@ -67,6 +69,7 @@ pub(crate) unsafe fn set_errno_with_hadoop_error<E: Into<LibError>>(e: E) {
             fs::FsError::Path(_) => libc::EINVAL,
         },
         LibError::NulString(_) | LibError::Null => libc::EINVAL,
+        LibError::Oom => libc::ENOMEM,
     };
     libc::__errno_location().write(the_errno);
 }

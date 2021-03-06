@@ -18,7 +18,9 @@
 mod errors;
 
 use crate::errors::LibError;
-use hdfesse_proto::hdfs::{HdfsFileStatusProto, HdfsFileStatusProto_FileType};
+use hdfesse_proto::hdfs::{
+    HdfsFileStatusProto, HdfsFileStatusProto_FileType, HdfsFileStatusProto_Flags,
+};
 use libhdfesse::{fs, path::Path, path::PathError};
 
 use std::convert::TryFrom;
@@ -477,8 +479,25 @@ pub struct hdfsFileInfo {
     mLastAccess: tTime,
 }
 
+const HDFS_EXTENDED_FILE_INFO_ENCRYPTED: c_int = 0x1;
+
+/**
+ * Extended file information.
+ */
+#[repr(C)]
+struct hdfsExtendedFileInfo {
+    // TODO: so far one byte is enough, we just follow the original
+    // version.
+    flags: c_int,
+}
+
+fn align_to_file_info(len: usize) -> usize {
+    // Compiles to (x & !7)
+    (len + 7) / 8 * 8
+}
+
 impl TryFrom<&HdfsFileStatusProto> for hdfsFileInfo {
-    type Error = std::ffi::NulError;
+    type Error = LibError;
 
     fn try_from(fstat: &HdfsFileStatusProto) -> Result<Self, Self::Error> {
         let mKind = if fstat.get_fileType() == HdfsFileStatusProto_FileType::IS_DIR {
@@ -487,7 +506,40 @@ impl TryFrom<&HdfsFileStatusProto> for hdfsFileInfo {
             tObjectKind::kObjectKindFile
         };
         let mName = CString::new(fstat.get_path())?;
-        let mOwner = CString::new(fstat.get_owner())?;
+
+        // The original libhdfs has an ugly hack: it places
+        // another struct (extInfo) just behind the mOwner allocated string.
+        // And extInfo.flags is updated with isEncrypted() flag value.
+        //
+        // TODO consider to store all strings and the
+        // hdfsExtendedfileinfo in a signle memory allocation.
+        let owner_file_info_offset = align_to_file_info(fstat.get_owner().len());
+        let owner_file_info_size =
+            owner_file_info_offset + std::mem::size_of::<hdfsExtendedFileInfo>();
+        // Safe because we just allocate memory
+        let owner_buffer = unsafe { libc::malloc(owner_file_info_size) } as *mut u8;
+        if owner_buffer == null_mut() {
+            return Err(LibError::Oom);
+        }
+
+        let owner = fstat.get_owner().as_bytes();
+        // Safe because we copy to the allocated data, and size is correct.
+        unsafe {
+            libc::memcpy(owner_buffer as _, owner.as_ptr() as _, owner.len());
+            owner_buffer.add(owner.len() + 1).write(0); // Terminating byte
+
+            let encrypted = (fstat.get_flags() & HdfsFileStatusProto_Flags::HAS_CRYPT as u32) != 0;
+            (owner_buffer.add(owner_file_info_offset) as *mut hdfsExtendedFileInfo).write(
+                hdfsExtendedFileInfo {
+                    flags: if encrypted {
+                        HDFS_EXTENDED_FILE_INFO_ENCRYPTED
+                    } else {
+                        0
+                    },
+                },
+            );
+        }
+
         let mGroup = CString::new(fstat.get_group())?;
 
         Ok(hdfsFileInfo {
@@ -497,10 +549,7 @@ impl TryFrom<&HdfsFileStatusProto> for hdfsFileInfo {
             mSize: fstat.get_length() as _,
             mReplication: fstat.get_block_replication() as _,
             mBlockSize: fstat.get_blocksize() as _,
-            // TODO the original libhdfs has an ugly hack: it places
-            // another struct (extInfo) just behind the mOwner allocated string.
-            // And extInfo.flags is updated with isEncrypted() flag.
-            mOwner: mOwner.into_raw(),
+            mOwner: owner_buffer as _,
             mGroup: mGroup.into_raw(),
             mPermissions: fstat.get_permission().get_perm() as _,
             mLastAccess: (fstat.get_access_time() / 1000) as _,
@@ -513,7 +562,9 @@ impl hdfsFileInfo {
     // Technically, it doesn't need to be &mut, but it is.
     unsafe fn free(&mut self) {
         CString::from_raw(self.mName);
-        CString::from_raw(self.mOwner);
+        // mOwner is different as it contains some kludgy extra data
+        // and allocated with malloc.
+        libc::free(self.mOwner as _);
         CString::from_raw(self.mGroup);
     }
 }
@@ -566,7 +617,7 @@ unsafe fn hdfs_list_directory_impl(
     stat_iter
         .map(|r| {
             r.map_err(LibError::Hdfs)
-                .and_then(|entry| hdfsFileInfo::try_from(&entry).map_err(LibError::NulString))
+                .and_then(|entry| hdfsFileInfo::try_from(&entry))
         })
         .collect()
 }
@@ -640,9 +691,25 @@ pub unsafe extern "C" fn hdfsFreeFileInfo(hdfsFileInfo: *mut hdfsFileInfo, numEn
     }
 }
 
+/**
+Return true value if file is encrypted.
+
+# Safety
+
+hdfsFileInfo have to be a pointer to value returned from hdfsGetPathInfo or
+hdfsListDirectory functions.
+**/
 #[no_mangle]
-pub extern "C" fn hdfsFileIsEncrypted(_hdfsFileInfo: *mut hdfsFileInfo) -> c_int {
-    unimplemented!()
+pub unsafe extern "C" fn hdfsFileIsEncrypted(hdfsFileInfo: *const hdfsFileInfo) -> c_int {
+    let owner_ptr = hdfsFileInfo.as_ref().unwrap().mOwner;
+    let owner = CStr::from_ptr(owner_ptr);
+    let offset = align_to_file_info(owner.to_bytes().len());
+    let flag = (owner_ptr.add(offset) as *const hdfsExtendedFileInfo)
+        .as_ref()
+        .unwrap()
+        .flags
+        & HDFS_EXTENDED_FILE_INFO_ENCRYPTED;
+    (flag != 0) as _
 }
 
 #[no_mangle]
