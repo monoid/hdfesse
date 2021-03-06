@@ -18,8 +18,7 @@ use std::fmt::Display;
 pub use crate::fs_ls::LsGroupIterator;
 use crate::{
     fs_ls::LsIterator,
-    path::UriResolver,
-    path::{Path, PathError},
+    path::{Path, PathError, UriResolver},
     rpc, service,
 };
 use hdfesse_proto::hdfs::HdfsFileStatusProto;
@@ -98,9 +97,10 @@ impl Hdfs {
         &'s mut self,
         src: &Path<'_>,
     ) -> Result<impl Iterator<Item = Result<HdfsFileStatusProto, HdfsError>> + 's, HdfsError> {
-        let src = self.resolve.resolve(src).map_err(HdfsError::src)?;
+        let src = self.resolve.resolve_path(src).map_err(HdfsError::src)?;
 
         self.get_file_info(&src)?;
+        // TODO ensure dir.
 
         Ok(
             LsIterator::new(LsGroupIterator::new(&mut self.service, &src))
@@ -109,7 +109,7 @@ impl Hdfs {
     }
 
     pub fn get_file_info(&mut self, src: &Path<'_>) -> Result<HdfsFileStatusProto, HdfsError> {
-        let src = self.resolve.resolve(src).map_err(HdfsError::src)?;
+        let src = self.resolve.resolve_path(src).map_err(HdfsError::src)?;
 
         self.service
             .getFileInfo(src.to_path_string())
@@ -121,8 +121,8 @@ impl Hdfs {
     // TODO a sketch; one should check that dst exists or doesn't
     // exist and srcs do exist, etc.
     pub fn rename(&mut self, src: &Path, dst: &Path<'_>) -> Result<(), HdfsError> {
-        let src = self.resolve.resolve(src).map_err(HdfsError::src)?;
-        let dst = self.resolve.resolve(dst).map_err(HdfsError::dst)?;
+        let src = self.resolve.resolve_path(src).map_err(HdfsError::src)?;
+        let dst = self.resolve.resolve_path(dst).map_err(HdfsError::dst)?;
 
         self.service
             .rename(src.to_path_string(), dst.to_path_string())

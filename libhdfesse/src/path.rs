@@ -265,6 +265,31 @@ impl UriResolver {
             Path { path: res }
         })
     }
+
+    /**
+    Resolve only path part, without user, host, etc.
+     */
+    pub fn resolve_path<'a>(&self, path: &'a Path<'a>) -> Result<Cow<'a, Path<'a>>, PathError> {
+        let uri = &path.path;
+        Ok(if uri.is_relative_path_reference() {
+            let mut res_path = self.default_uri.path().clone();
+            for part in uri.path().segments() {
+                res_path
+                    .push(part.clone())
+                    .map_err(|e| PathError::PartError(e.into()))?;
+            }
+            res_path.normalize(false);
+            Cow::Owned(Path {
+                path: uriparse::URIReferenceBuilder::new()
+                    .with_path(res_path)
+                    .build()
+                    .map_err(PathError::PartError)?,
+            })
+        } else {
+            // absolute path or full URL
+            Cow::Borrowed(path)
+        })
+    }
 }
 
 #[derive(Clone)]
@@ -486,6 +511,105 @@ mod tests {
                 .unwrap()
                 .to_string(),
             "hdfs://test:pass@host/test"
+        );
+    }
+
+    #[test]
+    fn test_resolve_path_relative() {
+        let res = UriResolver::new("myhost", "myself", None, None).unwrap();
+        assert_eq!(
+            res.resolve_path(&"test".try_into().unwrap())
+                .unwrap()
+                .to_path_string(),
+            "/user/myself/test"
+        );
+    }
+
+    #[test]
+    fn test_resolve_path_relative_dot() {
+        let res = UriResolver::new("myhost", "myself", None, None).unwrap();
+        assert_eq!(
+            res.resolve_path(&"./test".try_into().unwrap())
+                .unwrap()
+                .to_path_string(),
+            "/user/myself/test"
+        );
+    }
+
+    #[test]
+    fn test_resolve_path_relative_dotdot() {
+        let res = UriResolver::new("myhost", "myself", None, None).unwrap();
+        assert_eq!(
+            res.resolve_path(&"../test".try_into().unwrap())
+                .unwrap()
+                .to_path_string(),
+            "/user/test"
+        );
+    }
+
+    #[test]
+    fn test_resolve_path_absolute() {
+        let res = UriResolver::new("myhost", "myself", None, None).unwrap();
+        assert_eq!(
+            res.resolve_path(&"/test".try_into().unwrap())
+                .unwrap()
+                .to_path_string(),
+            "/test"
+        );
+    }
+
+    #[test]
+    fn test_resolve_path_absolute2() {
+        let res = UriResolver::new("myhost", "myself", None, None).unwrap();
+        assert_eq!(
+            res.resolve_path(&"//test/me".try_into().unwrap())
+                .unwrap()
+                .to_path_string(),
+            "/me"
+        );
+    }
+
+    #[test]
+    fn test_resolve_path_absolute3() {
+        let res = UriResolver::new("myhost", "myself", None, None).unwrap();
+        assert_eq!(
+            res.resolve_path(&"///test".try_into().unwrap())
+                .unwrap()
+                .to_path_string(),
+            "/test"
+        );
+    }
+
+    #[test]
+    fn test_resolve_path_host_nouser() {
+        let res = UriResolver::new("myhost", "myself", None, None).unwrap();
+        assert_eq!(
+            res.resolve_path(&"//host/test".try_into().unwrap())
+                .unwrap()
+                .to_path_string(),
+            "/test"
+        );
+    }
+
+    #[test]
+    fn test_resolve_path_spaces() {
+        let res = UriResolver::new("myhost", "myself", None, None).unwrap();
+        assert_eq!(
+            res.resolve_path(&"/te st".try_into().unwrap())
+                .unwrap()
+                .to_path_string(),
+            "/te st"
+        );
+    }
+
+    #[test]
+    fn test_resolve_path_full() {
+        let res = UriResolver::new("myhost", "myself", None, None).unwrap();
+        assert_eq!(
+            res.resolve_path(&"hdfs://test:pass@host/test".try_into().unwrap())
+                .unwrap()
+                .to_path_string(),
+            "/test"
         );
     }
 
