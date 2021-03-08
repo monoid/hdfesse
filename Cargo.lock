@@ -137,6 +137,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "hdfesse_proto",
+ "itertools",
  "libhdfesse",
  "number_prefix",
  "protobuf",

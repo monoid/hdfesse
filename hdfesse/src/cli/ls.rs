@@ -120,63 +120,86 @@ impl<'a> Ls<'a> {
 
         let status = self.hdfs.get_file_info(&path).map_err(LsError::Fs)?;
 
-        let mut data =
+        let data_iter =
             if args.directory | (status.get_fileType() != HdfsFileStatusProto_FileType::IS_DIR) {
-                vec![Record::from_hdfs_file_status(status, args.atime)]
+                itertools::Either::Left(
+                    vec![Ok(Record::from_hdfs_file_status(status, args.atime))].into_iter(),
+                )
             } else {
-                self.hdfs
-                    .list_status(&path)?
-                    .map(|res| res.map(|ent| Record::from_hdfs_file_status(ent, args.atime)))
-                    .collect::<Result<Vec<_>, HdfsError>>()?
+                itertools::Either::Right(
+                    self.hdfs
+                        .list_status(&path)?
+                        .map(|res| res.map(|ent| Record::from_hdfs_file_status(ent, args.atime))),
+                )
             };
-
-        if !args.recursive {
-            println!("Found {} items", data.len());
-        }
-
-        if args.sort_mtime {
-            if args.sort_reversed {
-                data.sort_unstable_by_key(|a| a.timestamp);
-            } else {
-                // Please note that by default `hdfs dfs -ls` sorts
-                // by timestamp from older to newer.
-                data.sort_unstable_by_key(|a| Reverse(a.timestamp));
-            }
-        } else if args.sort_size {
-            if args.sort_reversed {
-                data.sort_unstable_by_key(|a| a.size);
-            } else {
-                // Please note that by default `hdfs dfs -ls` sorts
-                // by file size from largest to smallerst.
-                data.sort_unstable_by_key(|a| Reverse(a.size));
-            }
-        } else {
-            // Default sort is sort by name; can be just reversed if
-            // needed.
-            if args.sort_reversed {
-                data.reverse();
-            }
-        }
 
         let mut format = if args.path_only {
             LineFormat::compact(path)
         } else {
             LineFormat::full(path, args.human)
         };
-        // Using streaming approach is crucial for huge directories where
-        // data does not fit into memory.  For sorted data, one has to
-        // collect everything in memory; but in case of problem, you can
-        // at least get default list and sort it with some external tool.
-        for entry in data.iter() {
-            for fmt in &mut format.formatters {
-                fmt.update_len(entry);
+
+        if args.stream {
+            // Using streaming approach is crucial for huge
+            // directories where data does not fit into memory.  For
+            // sorted data, one has to collect everything in memory;
+            // but in case of problem, you can
+            for rec in data_iter {
+                let rec = rec?;
+                for (idx, fmt) in format.formatters.iter().enumerate() {
+                    if idx != 0 {
+                        write!(&mut stdout, "\t").map_err(LsError::LocalIo)?;
+                    }
+                    fmt.print_streaming(&mut stdout, &rec)
+                        .map_err(LsError::LocalIo)?;
+                }
+                write!(&mut stdout, "\n").map_err(LsError::LocalIo)?;
             }
-        }
-        for entry in data.iter() {
-            for fmt in &format.formatters {
-                fmt.print(&mut stdout, entry).map_err(LsError::LocalIo)?;
+        } else {
+            let mut data = data_iter.collect::<Result<Vec<_>, HdfsError>>()?;
+            if !args.recursive {
+                println!("Found {} items", data.len());
             }
-            writeln!(&mut stdout).map_err(LsError::LocalIo)?;
+
+            if args.sort_mtime {
+                if args.sort_reversed {
+                    data.sort_unstable_by_key(|a| a.timestamp);
+                } else {
+                    // Please note that by default `hdfs dfs -ls` sorts
+                    // by timestamp from older to newer.
+                    data.sort_unstable_by_key(|a| Reverse(a.timestamp));
+                }
+            } else if args.sort_size {
+                if args.sort_reversed {
+                    data.sort_unstable_by_key(|a| a.size);
+                } else {
+                    // Please note that by default `hdfs dfs -ls` sorts
+                    // by file size from largest to smallerst.
+                    data.sort_unstable_by_key(|a| Reverse(a.size));
+                }
+            } else {
+                // Default sort is sort by name; can be just reversed if
+                // needed.
+                if args.sort_reversed {
+                    data.reverse();
+                }
+            }
+
+            // Using streaming approach is crucial for huge directories where
+            // data does not fit into memory.  For sorted data, one has to
+            // collect everything in memory; but in case of problem, you can
+            // at least get default list and sort it with some external tool.
+            for entry in data.iter() {
+                for fmt in &mut format.formatters {
+                    fmt.update_len(entry);
+                }
+            }
+            for entry in data.iter() {
+                for fmt in &format.formatters {
+                    fmt.print(&mut stdout, entry).map_err(LsError::LocalIo)?;
+                }
+                writeln!(&mut stdout).map_err(LsError::LocalIo)?;
+            }
         }
         Ok(())
     }

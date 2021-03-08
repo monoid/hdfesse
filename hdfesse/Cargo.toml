@@ -11,6 +11,7 @@ anyhow = "1.0"
 number_prefix = "0.4"
 chrono = "0.4"
 hdfesse_proto = { path = "../hdfesse_proto" }
+itertools = "0.10"
 libhdfesse = { path = "../libhdfesse" }
 protobuf = "2"
 structopt = "0.3"
