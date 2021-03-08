@@ -17,6 +17,7 @@ use std::{cmp::Reverse, io::Write};
 
 use super::Command;
 use crate::cli::ls_output::{LineFormat, Record};
+use hdfesse_proto::hdfs::HdfsFileStatusProto_FileType;
 use libhdfesse::fs::{Hdfs, HdfsError};
 use libhdfesse::path::{Path, PathError};
 use structopt::StructOpt;
@@ -117,17 +118,17 @@ impl<'a> Ls<'a> {
         let stdout_obj = std::io::stdout();
         let mut stdout = std::io::LineWriter::new(stdout_obj.lock());
 
-        let mut data = if args.directory {
-            vec![Record::from_hdfs_file_status(
-                self.hdfs.get_file_info(&path).map_err(LsError::Fs)?,
-                args.atime,
-            )]
-        } else {
-            self.hdfs
-                .list_status(&path)?
-                .map(|res| res.map(|ent| Record::from_hdfs_file_status(ent, args.atime)))
-                .collect::<Result<Vec<_>, HdfsError>>()?
-        };
+        let status = self.hdfs.get_file_info(&path).map_err(LsError::Fs)?;
+
+        let mut data =
+            if args.directory | (status.get_fileType() != HdfsFileStatusProto_FileType::IS_DIR) {
+                vec![Record::from_hdfs_file_status(status, args.atime)]
+            } else {
+                self.hdfs
+                    .list_status(&path)?
+                    .map(|res| res.map(|ent| Record::from_hdfs_file_status(ent, args.atime)))
+                    .collect::<Result<Vec<_>, HdfsError>>()?
+            };
 
         if !args.recursive {
             println!("Found {} items", data.len());
