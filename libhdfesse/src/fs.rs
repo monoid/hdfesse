@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-use std::fmt::Display;
+use std::{borrow::Cow, fmt::Display};
 
 pub use crate::fs_ls::LsGroupIterator;
 use crate::{
@@ -21,7 +21,7 @@ use crate::{
     path::{Path, PathError, UriResolver},
     rpc, service,
 };
-use hdfesse_proto::hdfs::HdfsFileStatusProto;
+use hdfesse_proto::hdfs::{HdfsFileStatusProto, HdfsFileStatusProto_FileType};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -32,6 +32,10 @@ pub enum FsError {
     NotFound(String),
     #[error(transparent)]
     Rpc(rpc::RpcError),
+    #[error("`{0}': Is not a directory")]
+    NotDir(String),
+    #[error("`{0}': File exists")]
+    FileExists(String),
 }
 
 #[derive(Debug)]
@@ -79,6 +83,21 @@ impl HdfsError {
     }
 }
 
+pub fn ensure_dir(
+    file_info: &HdfsFileStatusProto,
+    path: Cow<'_, str>,
+    kind: HdfsErrorKind,
+) -> Result<(), HdfsError> {
+    if file_info.get_fileType() == HdfsFileStatusProto_FileType::IS_DIR {
+        Ok(())
+    } else {
+        Err(HdfsError {
+            kind,
+            source: FsError::NotDir(path.into_owned()),
+        })
+    }
+}
+
 pub struct Hdfs {
     service: service::ClientNamenodeService,
     resolve: UriResolver,
@@ -99,8 +118,11 @@ impl Hdfs {
     ) -> Result<impl Iterator<Item = Result<HdfsFileStatusProto, HdfsError>> + 's, HdfsError> {
         let src = self.resolve.resolve_path(src).map_err(HdfsError::src)?;
 
-        self.get_file_info(&src)?;
-        // TODO ensure dir.
+        ensure_dir(
+            &self.get_file_info(&src)?,
+            src.to_string().into(),
+            HdfsErrorKind::Src,
+        )?;
 
         Ok(
             LsIterator::new(LsGroupIterator::new(&mut self.service, &src))
@@ -135,6 +157,7 @@ impl Hdfs {
     pub fn shutdown(self) -> Result<(), HdfsError> {
         self.service
             .shutdown()
-            .map_err(|e| HdfsError::op(FsError::Rpc(e)))
+            .map_err(FsError::Rpc)
+            .map_err(HdfsError::op)
     }
 }

@@ -62,6 +62,8 @@ pub(crate) unsafe fn set_errno_with_hadoop_error<E: Into<LibError>>(e: E) {
     let the_errno = match e.into() {
         LibError::Hdfs(he) => match he.source {
             fs::FsError::NotFound(_) => libc::ENOENT,
+            fs::FsError::FileExists(_) => libc::EEXIST,
+            fs::FsError::NotDir(_) => libc::ENOTDIR,
             fs::FsError::Rpc(r) => match r {
                 rpc::RpcError::Io(e) => e.raw_os_error().unwrap_or(EINTERNAL),
                 _ => r.get_class_name().map(get_error_code).unwrap_or(EINTERNAL),
