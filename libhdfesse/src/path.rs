@@ -350,6 +350,16 @@ impl<'a> Path<'a> {
             path
         }
     }
+
+    pub fn basename(&self) -> Cow<'_, str> {
+        // Unwrap is valid as uriparse::Path always contains at least
+        // one segment.
+        percent_encoding::utf8_percent_encode(
+            self.path.path().segments().last().unwrap().as_str(),
+            PATH_PERCENT_ENCODE_SET,
+        )
+        .into()
+    }
 }
 
 impl<'a> TryFrom<&'a str> for Path<'a> {
@@ -711,5 +721,29 @@ mod tests {
         let path = Path::new("/test//me///").unwrap();
         let join = path.join("/unexpected////it///").unwrap();
         assert_eq!(join.to_path_string(), "/test/me/unexpected/it");
+    }
+
+    #[test]
+    fn test_path_basename() {
+        let path = Path::new("/path/to/file").unwrap();
+        assert_eq!(path.basename(), "file");
+    }
+
+    #[test]
+    fn test_path_basename2() {
+        let path = Path::new("/path/to/file/").unwrap();
+        assert_eq!(path.basename(), "");
+    }
+
+    #[test]
+    fn test_path_basename_dot() {
+        let path = Path::new(".").unwrap();
+        assert_eq!(path.basename(), "");
+    }
+
+    #[test]
+    fn test_path_basename_dotdot() {
+        let path = Path::new("..").unwrap();
+        assert_eq!(path.basename(), "..");
     }
 }
