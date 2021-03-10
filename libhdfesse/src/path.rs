@@ -732,7 +732,7 @@ mod tests {
     #[test]
     fn test_path_basename2() {
         let path = Path::new("/path/to/file/").unwrap();
-        assert_eq!(path.basename(), "");
+        assert_eq!(path.basename(), "file");
     }
 
     #[test]
