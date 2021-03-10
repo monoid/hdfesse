@@ -68,9 +68,6 @@ pub struct LsOpts {
         help = "Sort output by file size"
     )]
     sort_size: bool,
-    // TODO: all it does is it replaces certain Unicode char types by
-    // '?' in whole output string (not only filename, but owner and
-    // group too).
     #[structopt(short = "q", help = "Print ? instead of non-printable characters")]
     quote: bool,
     #[structopt(
@@ -134,9 +131,9 @@ impl<'a> Ls<'a> {
             };
 
         let mut format = if args.path_only {
-            LineFormat::compact(path)
+            LineFormat::compact(path, args.quote)
         } else {
-            LineFormat::full(path, args.human)
+            LineFormat::full(path, args.human, args.quote)
         };
 
         if args.stream {

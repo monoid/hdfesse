@@ -15,3 +15,5 @@ This project is in its early stage and is not yet functional.
     produce different results.  hdfesse uses stable sort, Java version
     uses quicksort without any stability and reproducibility
     guarantee.
+  + Rust strings consider surrogate chars as invalid, so it your paths
+    contain them, hdfesse/libhdfesse/libhfs will immediately complain.

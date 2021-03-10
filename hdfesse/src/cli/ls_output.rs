@@ -56,6 +56,19 @@ fn format_flags(flags: u32) -> String {
     res
 }
 
+// Repeats org.apache.hadoop.fs.shell.PrintableString functionality.
+fn to_printable(v: &str) -> Cow<'_, str> {
+    lazy_static::lazy_static! {
+        // Surrogate codepoints are considered out of range in Rust
+        // String, and are not included in the regex crate.  Thus, if
+        // pathname contains it, it will fail on converting &[u8] to
+        // string.
+        static ref RE: regex::Regex = regex::Regex::new(r#"[\p{Control}\p{Format}\p{PrivateUse}\p{Unassigned}]"#).unwrap();
+    }
+
+    RE.replace_all(v, "?")
+}
+
 pub(crate) struct Record {
     pub(crate) file_type: HdfsFileStatusProto_FileType,
     pub(crate) perm: u32,
@@ -317,12 +330,14 @@ impl<W: Write> FieldFormatter<W> for GroupFormatter {
 
 struct NameFormatter {
     base: path::Path<'static>,
+    quote: bool,
 }
 
 impl NameFormatter {
-    fn new(base: path::Path<'_>) -> Self {
+    fn new(base: path::Path<'_>, quote: bool) -> Self {
         Self {
             base: base.into_owned(),
+            quote,
         }
     }
 }
@@ -331,13 +346,29 @@ impl<W: Write> FieldFormatter<W> for NameFormatter {
     fn update_len(&mut self, _entry: &Record) {}
 
     fn print(&self, out: &mut W, entry: &Record) -> std::io::Result<()> {
-        let joined = self.base.join(&entry.path).unwrap(); // TODO
-        write!(out, " {}", joined)
+        let joined = self.base.join(&entry.path).unwrap().to_string(); // TODO
+        write!(
+            out,
+            " {}",
+            if self.quote {
+                to_printable(&joined)
+            } else {
+                joined.into()
+            }
+        )
     }
 
     fn print_streaming(&self, out: &mut W, entry: &Record) -> std::io::Result<()> {
-        let joined = self.base.join(&entry.path).unwrap(); // TODO
-        write!(out, "{}", joined)
+        let joined = self.base.join(&entry.path).unwrap().to_string(); // TODO
+        write!(
+            out,
+            "{}",
+            if self.quote {
+                to_printable(&joined)
+            } else {
+                joined.into()
+            }
+        )
     }
 }
 
@@ -347,15 +378,15 @@ pub(crate) struct LineFormat<W: Write> {
 
 impl<W: Write> LineFormat<W> {
     /// Path-only output
-    pub(crate) fn compact(base: path::Path<'_>) -> Self {
+    pub(crate) fn compact(base: path::Path<'_>, quote: bool) -> Self {
         Self {
-            formatters: vec![Box::new(NameFormatter::new(base))],
+            formatters: vec![Box::new(NameFormatter::new(base, quote))],
         }
     }
 
     /// Full output; human is the flag that enables human-readable
     /// file size output.
-    pub(crate) fn full(base: path::Path<'_>, human: bool) -> Self {
+    pub(crate) fn full(base: path::Path<'_>, human: bool, quote: bool) -> Self {
         Self {
             formatters: vec![
                 Box::new(PermFormatter::default()),
@@ -368,7 +399,7 @@ impl<W: Write> LineFormat<W> {
                     Box::new(SimpleSizeFormatter::default())
                 },
                 Box::new(DateFormatter::default()),
-                Box::new(NameFormatter::new(base)),
+                Box::new(NameFormatter::new(base, quote)),
             ],
         }
     }
@@ -419,5 +450,48 @@ mod tests {
         assert_eq!(format_flags(6), "------rw-");
         assert_eq!(format_flags(7), "------rwx");
         assert_eq!(format_flags(42), "---r-x-w-");
+    }
+
+    #[test]
+    fn test_printable_ascii() {
+        assert_eq!(to_printable("abcdef347"), "abcdef347");
+        assert_eq!(to_printable(" !\"|}~"), " !\"|}~");
+    }
+
+    #[test]
+    fn test_printable_unicode_bmp() {
+        assert_eq!(to_printable("\u{1050}\u{2533}--"), "\u{1050}\u{2533}--");
+
+        // This test is commented out, as Rust compiler doesn't accept
+        // surrotages at all. :(
+        //
+        // assert_eq!(
+        //     to_printable("\u{D800}\u{DC00}'''\u{D802}\u{DD00}"),
+        //     "\u{D800}\u{DC00}'''\u{D802}\u{DD00}"
+        // );
+    }
+
+    #[test]
+    fn test_printable_non_printable() {
+        assert_eq!(to_printable("abc\rdef"), "abc?def");
+        assert_eq!(to_printable("\x08abc\tdef"), "?abc?def");
+        assert_eq!(to_printable("\x0c\x0c\x08\n"), "????");
+        assert_eq!(to_printable("\x17ab\0"), "?ab?");
+    }
+
+    #[test]
+    fn test_printable_non_printable_unicode() {
+        // Formatting Unicode
+        assert_eq!(to_printable("-\u{FEFF}--"), "-?--");
+        assert_eq!(to_printable("\u{2063}\t"), "??");
+
+        // Private use Unicode
+        assert_eq!(to_printable("\u{E000}"), "?");
+        assert_eq!(to_printable("\u{E123}abc\u{F432}"), "?abc?");
+        // Excluded some surrogates.
+        assert_eq!(to_printable("z\u{1050}"), "z\u{1050}");
+
+        // The original testsuite also had some surrogate tests that
+        // are not appropriate for Rust.
     }
 }
