@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-use std::{cmp::Reverse, io::Write};
+use std::cmp::Reverse;
 
 use super::Command;
 use crate::cli::ls_output::{LineFormat, Record};
@@ -146,14 +146,9 @@ impl<'a> Ls<'a> {
             // but in case of problem, you can
             for rec in data_iter {
                 let rec = rec?;
-                for (idx, fmt) in format.formatters.iter().enumerate() {
-                    if idx != 0 {
-                        write!(&mut stdout, "\t").map_err(LsError::LocalIo)?;
-                    }
-                    fmt.print_streaming(&mut stdout, &rec)
-                        .map_err(LsError::LocalIo)?;
-                }
-                write!(&mut stdout, "\n").map_err(LsError::LocalIo)?;
+                format
+                    .print_streaming(&mut stdout, &rec)
+                    .map_err(LsError::LocalIo)?;
             }
         } else {
             let mut data = data_iter.collect::<Result<Vec<_>, HdfsError>>()?;
@@ -190,15 +185,10 @@ impl<'a> Ls<'a> {
             // collect everything in memory; but in case of problem, you can
             // at least get default list and sort it with some external tool.
             for entry in data.iter() {
-                for fmt in &mut format.formatters {
-                    fmt.update_len(entry);
-                }
+                format.update_len(entry);
             }
             for entry in data.iter() {
-                for fmt in &format.formatters {
-                    fmt.print(&mut stdout, entry).map_err(LsError::LocalIo)?;
-                }
-                writeln!(&mut stdout).map_err(LsError::LocalIo)?;
+                format.print(&mut stdout, entry).map_err(LsError::LocalIo)?;
             }
         }
         Ok(())

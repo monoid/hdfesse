@@ -342,7 +342,7 @@ impl<W: Write> FieldFormatter<W> for NameFormatter {
 }
 
 pub(crate) struct LineFormat<W: Write> {
-    pub(crate) formatters: Vec<Box<dyn FieldFormatter<W>>>,
+    formatters: Vec<Box<dyn FieldFormatter<W>>>,
 }
 
 impl<W: Write> LineFormat<W> {
@@ -371,6 +371,29 @@ impl<W: Write> LineFormat<W> {
                 Box::new(NameFormatter::new(base)),
             ],
         }
+    }
+
+    pub(crate) fn update_len(&mut self, entry: &Record) {
+        for fmt in &mut self.formatters {
+            fmt.update_len(entry);
+        }
+    }
+
+    pub(crate) fn print(&self, out: &mut W, entry: &Record) -> std::io::Result<()> {
+        for fmt in &self.formatters {
+            fmt.print(out, entry)?;
+        }
+        writeln!(out)
+    }
+
+    pub(crate) fn print_streaming(&self, out: &mut W, entry: &Record) -> std::io::Result<()> {
+        for (idx, fmt) in self.formatters.iter().enumerate() {
+            if idx != 0 {
+                write!(out, "\t")?;
+            }
+            fmt.print_streaming(out, &entry)?;
+        }
+        writeln!(out)
     }
 }
 
