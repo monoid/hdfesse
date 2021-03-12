@@ -119,7 +119,7 @@ impl Hdfs {
         let src = self.resolve.resolve_path(src).map_err(HdfsError::src)?;
 
         ensure_dir(
-            &self.get_file_info(&src)?,
+            &self.get_file_info(&src).map_err(HdfsError::src)?,
             src.to_string().into(),
             HdfsErrorKind::Src,
         )?;
@@ -130,14 +130,13 @@ impl Hdfs {
         )
     }
 
-    pub fn get_file_info(&mut self, src: &Path<'_>) -> Result<HdfsFileStatusProto, HdfsError> {
-        let src = self.resolve.resolve_path(src).map_err(HdfsError::src)?;
+    pub fn get_file_info(&mut self, src: &Path<'_>) -> Result<HdfsFileStatusProto, FsError> {
+        let src = self.resolve.resolve_path(src)?;
 
         self.service
             .getFileInfo(src.to_path_string())
-            .map_err(FsError::Rpc)
-            .map_err(HdfsError::op)?
-            .ok_or_else(|| HdfsError::src(FsError::NotFound(src.to_path_string())))
+            .map_err(FsError::Rpc)?
+            .ok_or_else(|| FsError::NotFound(src.to_path_string()))
     }
 
     // TODO a sketch; one should check that dst exists or doesn't

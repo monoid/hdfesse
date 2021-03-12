@@ -317,12 +317,12 @@ pub unsafe extern "C" fn hdfsExists(fs: hdfsFS, path: *const c_char) -> c_int {
     match (fs, path) {
         (Some(fs), Ok(path)) => match fs.get_file_info(&path) {
             Ok(_) => 1,
-            Err(e) => match e.source {
+            Err(e) => match e {
                 // set_errno_with_hadoop_error handles it too, but
                 // for this function it is a normal situation.
                 fs::FsError::NotFound(_) => 0,
                 _ => {
-                    errors::set_errno_with_hadoop_error(e);
+                    errors::set_errno_with_hadoop_error(fs::HdfsError::src(e));
                     -1
                 }
             },
@@ -644,7 +644,11 @@ pub unsafe extern "C" fn hdfsGetPathInfo(fs: hdfsFS, path: *const c_char) -> *mu
     let fs = fs.as_mut();
 
     match (fs, path) {
-        (Some(fs), Ok(path)) => match fs.get_file_info(&path).map_err(LibError::Hdfs) {
+        (Some(fs), Ok(path)) => match fs
+            .get_file_info(&path)
+            .map_err(fs::HdfsError::src)
+            .map_err(LibError::Hdfs)
+        {
             Ok(fstat) => {
                 // TODO as we deallocate as Box<[T]>, one can create
                 // it from Box<T> instead of Vec.

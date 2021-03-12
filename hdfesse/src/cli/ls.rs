@@ -115,7 +115,11 @@ impl<'a> Ls<'a> {
         let stdout_obj = std::io::stdout();
         let mut stdout = std::io::LineWriter::new(stdout_obj.lock());
 
-        let status = self.hdfs.get_file_info(&path).map_err(LsError::Fs)?;
+        let status = self
+            .hdfs
+            .get_file_info(&path)
+            .map_err(HdfsError::src)
+            .map_err(LsError::Fs)?;
 
         let data_iter =
             if args.directory | (status.get_fileType() != HdfsFileStatusProto_FileType::IS_DIR) {
