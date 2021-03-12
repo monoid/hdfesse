@@ -41,6 +41,8 @@ enum Dfs {
     Ls(cli::ls::LsArgs),
     #[structopt(name = "-mv")]
     Mv(cli::mv::MvArgs),
+    #[structopt(name = "-mkdir")]
+    Mkdir(cli::mkdir::MkdirArgs),
 }
 
 fn main() -> Result<()> {
@@ -66,6 +68,7 @@ fn main() -> Result<()> {
         TopSubcmd::Dfs(dfs) => match dfs {
             Dfs::Ls(ls_args) => cli::ls::Ls::new(&mut hdfs).run(ls_args)?,
             Dfs::Mv(mv_args) => cli::mv::Mv::new(&mut hdfs).run(mv_args)?,
+            Dfs::Mkdir(mkdir_args) => cli::mkdir::Mkdir::new(&mut hdfs).run(mkdir_args)?,
         },
     };
     hdfs.shutdown()?;

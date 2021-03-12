@@ -15,6 +15,7 @@
 */
 pub mod ls;
 mod ls_output;
+pub mod mkdir;
 pub mod mv;
 
 pub trait Command {

@@ -46,9 +46,9 @@ impl<'a> Command for Mv<'a> {
         if args.srcs.len() > 1 {
             // TODO validate that dst exists and is a dir.
         }
+        let dst = Path::new(&args.dst)?;
         for src in args.srcs {
-            self.hdfs
-                .rename(&Path::new(&src)?, &Path::new(&args.dst)?)?;
+            self.hdfs.rename(&Path::new(&src)?, &dst)?;
         }
         Ok(0)
     }

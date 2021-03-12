@@ -21,8 +21,14 @@ use crate::{
     path::{Path, PathError, UriResolver},
     rpc, service,
 };
-use hdfesse_proto::hdfs::{HdfsFileStatusProto, HdfsFileStatusProto_FileType};
+use hdfesse_proto::{
+    acl::FsPermissionProto,
+    hdfs::{HdfsFileStatusProto, HdfsFileStatusProto_FileType},
+    ClientNamenodeProtocol::MkdirsRequestProto,
+};
 use thiserror::Error;
+
+const DEFAULT_DIR_PERM: u32 = 0o777;
 
 #[derive(Debug, Error)]
 pub enum FsError {
@@ -98,6 +104,21 @@ pub fn ensure_dir(
     }
 }
 
+pub fn ensure_not_exists(
+    file_info_result: Result<HdfsFileStatusProto, FsError>,
+    path: Cow<'_, str>,
+    kind: HdfsErrorKind,
+) -> Result<(), HdfsError> {
+    match file_info_result {
+        Ok(_) => Err(HdfsError {
+            kind,
+            source: FsError::FileExists(path.into_owned()),
+        }),
+        Err(FsError::NotFound(_)) => Ok(()),
+        Err(source) => Err(HdfsError { kind, source }),
+    }
+}
+
 pub struct Hdfs {
     service: service::ClientNamenodeService,
     resolve: UriResolver,
@@ -150,6 +171,32 @@ impl Hdfs {
             .map_err(FsError::Rpc)
             .map_err(HdfsError::op)?;
         Ok(())
+    }
+
+    // Almost functional implementation, requires some polishing.
+    pub fn mkdirs(&mut self, src: &Path, create_parent: bool) -> Result<(), HdfsError> {
+        let src_res = self.resolve.resolve_path(src).map_err(HdfsError::src)?;
+
+        if !create_parent {
+            // create_parent also assumes that it is ok if path exists
+            ensure_not_exists(
+                self.get_file_info(&src),
+                src.to_string().into(),
+                HdfsErrorKind::Src,
+            )?;
+        }
+
+        let mut args = MkdirsRequestProto::new();
+        let mut fs_perm = FsPermissionProto::new();
+        fs_perm.set_perm(DEFAULT_DIR_PERM);
+        args.set_src(src_res.to_path_string());
+        args.set_createParent(create_parent);
+        args.set_masked(fs_perm);
+        self.service
+            .mkdirs(&args)
+            .map_err(FsError::Rpc)
+            .map_err(HdfsError::op)
+            .map(|_| ())
     }
 
     #[inline]
