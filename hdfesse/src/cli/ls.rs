@@ -27,8 +27,12 @@ use thiserror::Error;
  * See
  * hadoop/hadoop-common-project/hadoop-common/src/main/java/org/apache/hadoop/fs/shell/Ls.java
  */
-/// ls options are factored out to separate struct for convenience.
+// ls options are factored out to separate struct for convenience.
 #[derive(Debug, StructOpt)]
+#[structopt(
+    name = "ls",
+    about = "List the contents that match the specified file pattern."
+)]
 pub struct LsOpts {
     // TODO unimplemented
     #[structopt(
