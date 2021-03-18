@@ -22,6 +22,7 @@ use libhdfesse::fs::{Hdfs, HdfsError};
 use libhdfesse::path::{Path, PathError};
 use structopt::StructOpt;
 use thiserror::Error;
+use tracing::{span, trace, Level};
 
 /*
  * See
@@ -161,28 +162,34 @@ impl<'a> Ls<'a> {
                 println!("Found {} items", data.len());
             }
 
-            if args.sort_mtime {
-                if args.sort_reversed {
-                    data.sort_unstable_by_key(|a| a.timestamp);
+            {
+                let span = span!(Level::TRACE, "sort", len = data.len());
+                let _enter = span.enter();
+
+                if args.sort_mtime {
+                    if args.sort_reversed {
+                        data.sort_unstable_by_key(|a| a.timestamp);
+                    } else {
+                        // Please note that by default `hdfs dfs -ls` sorts
+                        // by timestamp from older to newer.
+                        data.sort_unstable_by_key(|a| Reverse(a.timestamp));
+                    }
+                } else if args.sort_size {
+                    if args.sort_reversed {
+                        data.sort_unstable_by_key(|a| a.size);
+                    } else {
+                        // Please note that by default `hdfs dfs -ls` sorts
+                        // by file size from largest to smallerst.
+                        data.sort_unstable_by_key(|a| Reverse(a.size));
+                    }
                 } else {
-                    // Please note that by default `hdfs dfs -ls` sorts
-                    // by timestamp from older to newer.
-                    data.sort_unstable_by_key(|a| Reverse(a.timestamp));
+                    // Default sort is sort by name; can be just reversed if
+                    // needed.
+                    if args.sort_reversed {
+                        data.reverse();
+                    }
                 }
-            } else if args.sort_size {
-                if args.sort_reversed {
-                    data.sort_unstable_by_key(|a| a.size);
-                } else {
-                    // Please note that by default `hdfs dfs -ls` sorts
-                    // by file size from largest to smallerst.
-                    data.sort_unstable_by_key(|a| Reverse(a.size));
-                }
-            } else {
-                // Default sort is sort by name; can be just reversed if
-                // needed.
-                if args.sort_reversed {
-                    data.reverse();
-                }
+                trace!("sorted");
             }
 
             // Using streaming approach is crucial for huge directories where

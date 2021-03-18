@@ -18,6 +18,7 @@ use anyhow::Result;
 use cli::Command;
 use libhdfesse::path::UriResolver;
 use structopt::StructOpt;
+use tracing_subscriber::layer::SubscriberExt;
 
 #[derive(StructOpt)]
 struct HdfessseApp {
@@ -46,6 +47,11 @@ enum Dfs {
 }
 
 fn main() -> Result<()> {
+    tracing::subscriber::set_global_default(
+        tracing_subscriber::Registry::default().with(tracing_tree::HierarchicalLayer::new(2)),
+    )
+    .unwrap();
+
     let opt = HdfessseApp::from_args();
 
     let client = match &opt.user {

@@ -19,6 +19,7 @@ use std::net::ToSocketAddrs;
 use std::{borrow::Cow, fmt::Debug};
 
 use thiserror::Error;
+use tracing::{instrument, trace};
 
 use crate::util;
 use hdfesse_proto::IpcConnectionContext::*;
@@ -54,6 +55,7 @@ impl Connector for SimpleConnector {
     }
 }
 
+#[derive(Debug)]
 struct InfiniteSeq {
     val: i32,
 }
@@ -158,6 +160,7 @@ pub static ERROR_CLASS_MAP: ::phf::Map<&'static str, RpcErrorKind> = ::phf::phf_
 /**
  * HDFS connection, i.e. connection to HDFS master NameNode.
  */
+#[derive(Debug)]
 pub struct HdfsConnection {
     stream: TcpStream,
     user: Box<str>,
@@ -197,6 +200,7 @@ impl HdfsConnection {
         .map_err(RpcConnectError::Rpc)
     }
 
+    #[instrument]
     fn init_connection(mut self) -> Result<Self, RpcError> {
         self.stream.set_nodelay(true)?;
         {
@@ -226,6 +230,7 @@ impl HdfsConnection {
         Ok(self)
     }
 
+    #[instrument(skip(cos))]
     fn send_message_group(
         cos: &mut CodedOutputStream,
         messages: &[&dyn Message],
@@ -250,6 +255,7 @@ impl HdfsConnection {
 
     // TODO I failed to read to &dyn Message easily with current
     // protobuf, thus this method has Output type argument.
+    #[instrument]
     pub fn call<Output: Message>(
         &mut self,
         method_name: Cow<'_, str>,
@@ -285,7 +291,7 @@ impl HdfsConnection {
         // Delimited message
         let mut resp_header: RpcResponseHeaderProto = pis.read_message()?;
 
-        match resp_header.get_status() {
+        let res = match resp_header.get_status() {
             // Delimited message
             RpcStatus::SUCCESS => Ok(pis.read_message()?),
             RpcStatus::ERROR => {
@@ -299,7 +305,7 @@ impl HdfsConnection {
                         error_msg: resp_header.take_errorMsg(),
                         error_detail: resp_header.get_errorDetail(),
                         exception: resp_header.take_exceptionClassName(),
-                        method: method_name.into_owned(),
+                        method: method_name.to_string(),
                     })
                 } else {
                     Err(RpcError::ErrorResponse {
@@ -307,7 +313,7 @@ impl HdfsConnection {
                         error_msg: resp_header.take_errorMsg(),
                         error_detail: resp_header.get_errorDetail(),
                         exception: resp_header.take_exceptionClassName(),
-                        method: method_name.into_owned(),
+                        method: method_name.to_string(),
                     })
                 }
             }
@@ -316,14 +322,19 @@ impl HdfsConnection {
                 error_msg: resp_header.take_errorMsg(),
                 error_detail: resp_header.get_errorDetail(),
                 exception: resp_header.take_exceptionClassName(),
-                method: method_name.into_owned(),
+                method: method_name.to_string(),
             }),
-        }
+        };
+
+        trace!(target = "call", "call complete: {}", method_name);
+
+        res
     }
 
     /// Send a closing packet to the server.  It should be just
     /// Drop::drop, but it wouldn't work for the anticipated async
     /// version.
+    #[instrument]
     pub fn shutdown(mut self) -> Result<(), RpcError> {
         let mut hh = RpcRequestHeaderProto::default();
         hh.set_rpcKind(RpcKindProto::RPC_PROTOCOL_BUFFER);
