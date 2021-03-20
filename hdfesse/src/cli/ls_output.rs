@@ -79,11 +79,23 @@ pub(crate) struct Record {
     pub(crate) group: Box<str>,
     pub(crate) size: u64,
     pub(crate) timestamp: u64,
+    // datetime string is quite expensive to calculate, thus we
+    // precompute it.
+    pub(crate) timestmap_str: String,
     pub(crate) path: Box<str>,
 }
 
 impl Record {
-    pub(crate) fn from_hdfs_file_status(mut entry: HdfsFileStatusProto, atime: bool) -> Self {
+    pub(crate) fn from_hdfs_file_status(
+        mut entry: HdfsFileStatusProto,
+        atime: bool,
+        tz_offset: chrono::FixedOffset,
+    ) -> Self {
+        let timestamp = if atime {
+            entry.get_access_time()
+        } else {
+            entry.get_modification_time()
+        };
         Record {
             file_type: entry.get_fileType(),
             perm: entry.get_permission().get_perm(),
@@ -97,6 +109,7 @@ impl Record {
             } else {
                 entry.get_modification_time()
             },
+            timestmap_str: DateFormatter::format_datetime(timestamp, tz_offset),
             // TODO: move formatting option to formatter.
             // Record should hold a Vec.
             path: String::from_utf8_lossy(entry.get_path()).into(),
@@ -232,17 +245,16 @@ impl<W: Write> FieldFormatter<W> for HumanSizeFormatter {
 
 struct DateFormatter {
     max_len: usize,
-    tz_offset: chrono::FixedOffset,
 }
 
 impl DateFormatter {
-    fn format_datetime(&self, entry: &Record) -> String {
+    fn format_datetime(timestamp: u64, tz_offset: chrono::FixedOffset) -> String {
         let time = chrono::NaiveDateTime::from_timestamp(
-            entry.timestamp as i64 / 1000, // millisec to secs
+            timestamp as i64 / 1000, // millisec to secs
             // We don't need the millisecond part
             0,
         );
-        let time_tz = chrono::DateTime::<chrono::Local>::from_utc(time, self.tz_offset);
+        let time_tz = chrono::DateTime::<chrono::Local>::from_utc(time, tz_offset);
 
         time_tz.format("%Y-%m-%d %H:%M").to_string()
     }
@@ -250,33 +262,21 @@ impl DateFormatter {
 
 impl Default for DateFormatter {
     fn default() -> Self {
-        Self {
-            max_len: 0,
-            // Haha, our installation uses old Java with old timezone
-            // data; but the hdfesse uses local timezone data which is
-            // updated with system updates.  And for Europe/Moscow it
-            // does matter.
-            tz_offset: *chrono::Local::now().offset(),
-        }
+        Self { max_len: 0 }
     }
 }
 
 impl<W: Write> FieldFormatter<W> for DateFormatter {
     fn update_len(&mut self, entry: &Record) {
-        self.max_len = max(self.max_len, self.format_datetime(entry).chars().count());
+        self.max_len = max(self.max_len, entry.timestmap_str.chars().count());
     }
 
     fn print(&self, out: &mut W, entry: &Record) -> std::io::Result<()> {
-        write!(
-            out,
-            "{0:>1$}",
-            self.format_datetime(entry),
-            self.max_len + 1
-        )
+        write!(out, "{0:>1$}", entry.timestmap_str, self.max_len + 1)
     }
 
     fn print_streaming(&self, out: &mut W, entry: &Record) -> std::io::Result<()> {
-        write!(out, "{}", self.format_datetime(entry))
+        write!(out, "{}", entry.timestmap_str)
     }
 }
 

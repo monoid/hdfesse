@@ -126,17 +126,24 @@ impl<'a> Ls<'a> {
             .map_err(HdfsError::src)
             .map_err(LsError::Fs)?;
 
+        // Haha, our installation uses old Java with old timezone
+        // data; but the hdfesse uses local timezone data which is
+        // updated with system updates.  And for Europe/Moscow it
+        // does matter.
+        let tz_offset = *chrono::Local::now().offset();
+
         let data_iter =
             if args.directory | (status.get_fileType() != HdfsFileStatusProto_FileType::IS_DIR) {
                 itertools::Either::Left(
-                    vec![Ok(Record::from_hdfs_file_status(status, args.atime))].into_iter(),
+                    vec![Ok(Record::from_hdfs_file_status(
+                        status, args.atime, tz_offset,
+                    ))]
+                    .into_iter(),
                 )
             } else {
-                itertools::Either::Right(
-                    self.hdfs
-                        .list_status(&path)?
-                        .map(|res| res.map(|ent| Record::from_hdfs_file_status(ent, args.atime))),
-                )
+                itertools::Either::Right(self.hdfs.list_status(&path)?.map(|res| {
+                    res.map(|ent| Record::from_hdfs_file_status(ent, args.atime, tz_offset))
+                }))
             };
 
         let mut format = if args.path_only {
