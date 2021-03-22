@@ -23,10 +23,26 @@ use hdfesse_proto::hdfs::{
 };
 use libhdfesse::{fs, path::Path, path::PathError};
 
-use std::convert::TryFrom;
 use std::ffi::{c_void, CStr, CString};
 use std::os::raw::{c_char, c_int, c_short};
-use std::ptr::null_mut;
+use std::ptr::{null, null_mut};
+use std::{collections::HashMap, convert::TryFrom};
+
+macro_rules! expect_mut {
+    ($var:ident) => {
+        ($var)
+            .as_mut()
+            .expect(concat!("Expecting non-null pointer in ", stringify!($var)))
+    };
+}
+
+macro_rules! expect_ref {
+    ($var:ident) => {
+        ($var)
+            .as_ref()
+            .expect(concat!("Expecting non-null pointer in ", stringify!($var)))
+    };
+}
 
 /**
 
@@ -310,12 +326,12 @@ functions, and path is a null-terminated C string.
 #[no_mangle]
 pub unsafe extern "C" fn hdfsExists(fs: hdfsFS, path: *const c_char) -> c_int {
     let path = CStr::from_ptr(path).to_str();
-    let fs = fs.as_mut(); // TODO unwrap?  Fail if it is null.
+    let fs = expect_mut!(fs);
 
     let path = path.map_err(PathError::Utf8).and_then(Path::new);
 
-    match (fs, path) {
-        (Some(fs), Ok(path)) => match fs.get_file_info(&path) {
+    match path {
+        Ok(path) => match fs.get_file_info(&path) {
             Ok(_) => 1,
             Err(e) => match e {
                 // set_errno_with_hadoop_error handles it too, but
@@ -610,7 +626,7 @@ unsafe fn hdfs_list_directory_impl(
         .and_then(Path::new)
         .map_err(fs::HdfsError::src)?;
 
-    let fs = fs.as_mut().ok_or(LibError::Null)?;
+    let fs = expect_mut!(fs);
 
     let stat_iter = fs.list_status(&path)?;
 
@@ -641,10 +657,10 @@ pub unsafe extern "C" fn hdfsGetPathInfo(fs: hdfsFS, path: *const c_char) -> *mu
     let path = CStr::from_ptr(path).to_str();
     let path = path.map_err(PathError::Utf8).and_then(Path::new);
 
-    let fs = fs.as_mut();
+    let fs = expect_mut!(fs);
 
-    match (fs, path) {
-        (Some(fs), Ok(path)) => match fs
+    match path {
+        Ok(path) => match fs
             .get_file_info(&path)
             .map_err(fs::HdfsError::src)
             .map_err(LibError::Hdfs)
@@ -705,7 +721,7 @@ hdfsListDirectory functions.
 **/
 #[no_mangle]
 pub unsafe extern "C" fn hdfsFileIsEncrypted(hdfsFileInfo: *const hdfsFileInfo) -> c_int {
-    let owner_ptr = hdfsFileInfo.as_ref().unwrap().mOwner;
+    let owner_ptr = expect_ref!(hdfsFileInfo).mOwner;
     let owner = CStr::from_ptr(owner_ptr);
     let offset = align_to_file_info(owner.to_bytes().len());
     let flag = (owner_ptr.add(offset) as *const hdfsExtendedFileInfo)
