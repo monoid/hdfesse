@@ -93,7 +93,6 @@ impl hdfsBuilder {
             kerb_ticket_cache_path: null(),
             user_name: null(),
             opts: Default::default(),
-            _marker: core::marker::PhantomData,
         }
     }
 }
