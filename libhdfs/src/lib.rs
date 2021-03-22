@@ -81,7 +81,7 @@ pub struct hdfsBuilder {
     user_name: *const c_char,
     // TODO: Original library uses list, and thus values may repeat;
     // is it OK?
-    opts: HashMap<CString, CString>,
+    opts: HashMap<&'static CStr, &'static CStr>,
 }
 
 impl hdfsBuilder {
@@ -278,13 +278,26 @@ pub unsafe extern "C" fn hdfsFreeBuilder(bld: *mut hdfsBuilder) {
     Box::from_raw(bld);
 }
 
+/**
+Set builder's configuration variable.  The caller manages key and val
+lifetimes.
+
+# Safety
+
+bld is a valid builder returned by hdfsBuilder function; key and val
+are nul-terminated C strings with lifetime larger than lifetime of
+bld.
+*/
 #[no_mangle]
-pub extern "C" fn hdfsBuilderConfSetStr(
-    _bld: *mut hdfsBuilder,
-    _key: *const c_char,
-    _val: *const c_char,
+pub unsafe extern "C" fn hdfsBuilderConfSetStr(
+    bld: *mut hdfsBuilder,
+    key: *const c_char,
+    val: *const c_char,
 ) -> c_int {
-    unimplemented!()
+    expect_mut!(bld)
+        .opts
+        .insert(CStr::from_ptr(key), CStr::from_ptr(val));
+    0
 }
 
 #[no_mangle]
