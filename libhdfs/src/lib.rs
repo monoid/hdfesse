@@ -68,11 +68,35 @@ pub enum tObjectKind {
 #[allow(clippy::upper_case_acronyms)]
 pub type hdfsFS = *mut libhdfesse::fs::Hdfs;
 // TODO make these types distinct
-pub type hdfsBuilder = c_void;
 pub type hdfsStreamBuilder = c_void;
 pub type hadoopRzOptions = c_void;
 pub type hadoopRzBuffer = c_void;
 
+#[repr(C)]
+pub struct hdfsBuilder {
+    force_new_instance: bool,
+    nn: *const c_char,
+    port: tPort,
+    kerb_ticket_cache_path: *const c_char,
+    user_name: *const c_char,
+    // TODO: Original library uses list, and thus values may repeat;
+    // is it OK?
+    opts: HashMap<CString, CString>,
+}
+
+impl hdfsBuilder {
+    fn new() -> Self {
+        Self {
+            force_new_instance: false,
+            nn: null(),
+            port: 0,
+            kerb_ticket_cache_path: null(),
+            user_name: null(),
+            opts: Default::default(),
+            _marker: core::marker::PhantomData,
+        }
+    }
+}
 #[repr(C)]
 pub struct hdfs_internal {}
 
@@ -175,37 +199,84 @@ pub extern "C" fn hdfsBuilderConnect(_bld: *mut hdfsBuilder) -> hdfsFS {
     unimplemented!()
 }
 
+/**
+Creates a new hdfsBuilder.  You have to free the result with
+hdfsFreeBuilder().
+*/
 #[no_mangle]
 pub extern "C" fn hdfsBuilder() -> *mut hdfsBuilder {
-    unimplemented!()
+    Box::into_raw(Box::new(hdfsBuilder::new()))
 }
 
+/**
+
+Sets the force_new_instance_flag.  If it is set, new connection to the
+name node is created instead of cached shared one.
+
+#Safety
+bld is a non-null pointer returned from hdfsBuilder() function.
+*/
 #[no_mangle]
-pub extern "C" fn hdfsBuilderSetForceNewInstance(_bld: *mut hdfsBuilder) {
-    unimplemented!()
+pub unsafe extern "C" fn hdfsBuilderSetForceNewInstance(bld: *mut hdfsBuilder) {
+    expect_mut!(bld).force_new_instance = true;
 }
 
+/**
+Sets the namenode.  If never set or set to null, default namenode is used.
+
+#Safety
+
+bld is a non-null pointer returned from hdfsBuilder() function.  nn is
+a nul-terminated C string owned by the application.
+*/
 #[no_mangle]
-pub extern "C" fn hdfsBuilderSetNameNodePort(_bld: *mut hdfsBuilder, _port: tPort) {
-    unimplemented!()
+pub unsafe extern "C" fn hdfsBuilderSetNameNode(bld: *mut hdfsBuilder, nn: *const c_char) {
+    expect_mut!(bld).nn = nn;
 }
 
+/**
+Sets the namenode port.  If never set, default port is used.
+
+#Safety
+bld is a non-null pointer returned from hdfsBuilder() function.
+*/
 #[no_mangle]
-pub extern "C" fn hdfsBuilderSetUserName(_bld: *mut hdfsBuilder, _userName: *const c_char) {
-    unimplemented!()
+pub unsafe extern "C" fn hdfsBuilderSetNameNodePort(bld: *mut hdfsBuilder, port: tPort) {
+    expect_mut!(bld).port = port;
 }
 
+/**
+Sets the username.  If never set or set to null, the username is
+derived from the environment.
+
+#Safety
+
+bld is a non-null pointer returned from hdfsBuilder() function.  userName is
+a nul-terminated C string owned by the application.
+*/
 #[no_mangle]
-pub extern "C" fn hdfsSetKerbTicketCachePath(
-    _bld: *mut hdfsBuilder,
-    _kerbTicketCachePath: *const c_char,
+pub unsafe extern "C" fn hdfsBuilderSetUserName(bld: *mut hdfsBuilder, userName: *const c_char) {
+    expect_mut!(bld).user_name = userName;
+}
+
+/**
+Sets the Kerberos ticket chache path.
+#Safety
+
+bld is a non-null pointer returned from hdfsBuilder() function.
+kerbTicketCachePath is a nul-terminated C string owned by the application.
+*/
+#[no_mangle]
+pub unsafe extern "C" fn hdfsSetKerbTicketCachePath(
+    bld: *mut hdfsBuilder,
+    kerbTicketCachePath: *const c_char,
 ) {
-    unimplemented!()
+    expect_mut!(bld).kerb_ticket_cache_path = kerbTicketCachePath;
 }
 
 #[no_mangle]
-pub extern "C" fn hdfsFreeBuilder(_bld: *mut hdfsBuilder) {
-    unimplemented!()
+pub unsafe extern "C" fn hdfsFreeBuilder(bld: *mut hdfsBuilder) {
+    Box::from_raw(bld);
 }
 
 #[no_mangle]
