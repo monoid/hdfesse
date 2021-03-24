@@ -15,8 +15,9 @@
 */
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
-use std::{collections::HashMap, ops::Deref};
+use std::{collections::HashMap, fmt::Debug, ops::Deref};
 use thiserror::Error;
+use tracing::{debug, info};
 use xml::reader::{EventReader, XmlEvent};
 
 /// Try to get path to config from the environment.  It is the
@@ -87,9 +88,22 @@ impl ConfigMap {
         self.0.get(key)
     }
 
-    pub fn insert<T: Into<Box<str>> + AsRef<str>>(&mut self, key: T, val: T, final_: bool) -> bool {
+    #[tracing::instrument]
+    pub fn insert<T: Into<Box<str>> + AsRef<str> + Debug>(
+        &mut self,
+        key: T,
+        val: T,
+        final_: bool,
+    ) -> bool {
         let old_final = match self.0.get(key.as_ref()) {
-            Some(data) => data.is_final(),
+            Some(data) => {
+                info!(
+                    key = key.as_ref(),
+                    val = val.as_ref(),
+                    "skipping because it is already exists and final"
+                );
+                data.is_final()
+            }
             None => false,
         };
         if !old_final {
@@ -98,11 +112,8 @@ impl ConfigMap {
         old_final
     }
 
-    pub fn merge_config<R: Read>(
-        &mut self,
-        r: R,
-        config_path: &Path,
-    ) -> Result<(), ConfigError> {
+    #[tracing::instrument(skip(r))]
+    pub fn merge_config<R: Read>(&mut self, r: R, config_path: &Path) -> Result<(), ConfigError> {
         let parser = EventReader::new(r);
 
         let mut elt = None;
@@ -113,16 +124,23 @@ impl ConfigMap {
         for e in parser {
             match e.map_err(|e| ConfigError::Xml(e, config_path.to_owned()))? {
                 XmlEvent::StartElement { name, .. } => {
-                    elt = Some(name.to_string());
+                    let name = name.to_string();
+                    if name == "property" {
+                        key = None;
+                        val = None;
+                        final_ = None;
+                    }
+                    elt = Some(name);
                 }
                 XmlEvent::EndElement { name } => {
                     if name.to_string() == "property" {
                         if let Some((k, v)) = key.take().zip(val.take()) {
-                            self.insert(k, v, final_.map(|v| v == "true").unwrap_or(false));
+                            self.insert(
+                                k,
+                                v,
+                                final_.as_ref().map(|v| v == "true").unwrap_or(false),
+                            );
                         }
-                        key = None;
-                        val = None;
-                        final_ = None;
                     }
                     elt = None;
                 }
@@ -153,12 +171,14 @@ impl Default for ConfigMap {
 Load the XML Hadoop/HDFS config and return properties' name/values as
 dict.  It performs only minimal validation.
 */
+#[tracing::instrument(skip(config_paths))]
 pub fn load_config<'p, Paths: Iterator<Item = &'p Path>>(
     config_paths: Paths,
 ) -> Result<ConfigMap, ConfigError> {
     let mut config_map = ConfigMap::new();
 
     for config_path in config_paths {
+        debug!("merging file {:?}", config_path);
         let mut buf = io::BufReader::new(
             std::fs::File::open(config_path)
                 .map_err(|e| ConfigError::Io(e, config_path.to_owned()))?,
@@ -242,11 +262,6 @@ mod tests {
     fn test_config_merge_config() -> Result<(), Box<dyn Error>> {
         let data = b"<?xml version=\"1.0\" encoding=\"UTF-8\"?><configuration>
 <property>
-   <name>test0</name>
-   <value>value0</value>
-   <final>true</final>
-</property>
-<property>
    <name>test1</name>
    <value>value1</value>
    <final>false</final>
@@ -259,6 +274,17 @@ mod tests {
 <property>
    <name>test3</name>
    <value>value3</value>
+</property>
+<property>
+   <name>test0</name>
+   <value>value0</value>
+   <final>true</final>
+</property>
+<property>
+   <value>value6</value>
+</property>
+<property>
+   <name>test5</name>
 </property>
 </configuration>";
         let mut config = ConfigMap::new();
@@ -275,6 +301,7 @@ mod tests {
         assert_eq!(config.get("test2").map(ConfigData::is_final), Some(false));
         assert_eq!(config.get("test3").map(Deref::deref), Some("value3"));
         assert_eq!(config.get("test3").map(ConfigData::is_final), Some(false));
+        assert!(config.get("test6").is_none());
         Ok(())
     }
 
