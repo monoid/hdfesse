@@ -17,15 +17,65 @@ use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 use std::{collections::HashMap, fmt::Debug, ops::Deref};
 use thiserror::Error;
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 use xml::reader::{EventReader, XmlEvent};
 
 /// Try to get path to config from the environment.  It is the
 /// "hdfs-site.xml" either from HADOOP_CONF_DIR default variable or
 /// "/etc/hadoop/conf" directory.
-pub fn get_config_path() -> PathBuf {
+pub fn get_config_path(path: &str) -> PathBuf {
     let conf_dir = std::env::var_os("HADOOP_CONF_DIR").unwrap_or_else(|| "/etc/hadoop/conf".into());
-    PathBuf::from(conf_dir).join("hdfs-site.xml")
+    PathBuf::from(conf_dir).join(path)
+}
+
+#[derive(Debug)]
+pub struct ConfigPathGroup {
+    paths: Vec<&'static str>,
+}
+
+impl ConfigPathGroup {
+    fn merge<I: Iterator<Item = &'static str>>(paths: &mut Vec<&'static str>, new_paths: I) {
+        for path in new_paths {
+            if !paths.contains(&path) {
+                paths.push(path);
+            }
+        }
+    }
+    pub fn from_paths<I: Iterator<Item = &'static str>>(new_paths: I) -> Self {
+        let mut paths_res = vec![];
+        Self::merge(&mut paths_res, new_paths);
+        Self { paths: paths_res }
+    }
+
+    pub fn from_parent_and_paths<I: Iterator<Item = &'static str>>(
+        parent: &ConfigPathGroup,
+        new_paths: I,
+    ) -> Self {
+        let mut paths_res = parent.paths.clone();
+        Self::merge(&mut paths_res, new_paths);
+        Self { paths: paths_res }
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &str> {
+        self.paths.iter().copied()
+    }
+}
+
+lazy_static::lazy_static! {
+    pub static ref HADOOP_CONFIG: ConfigPathGroup =
+        ConfigPathGroup::from_paths([
+            "core-default.xml", "core-site.xml", "hadoop-site.xml"
+        ].iter().cloned());
+
+    pub static ref HDFS_CONFIG: ConfigPathGroup = ConfigPathGroup::from_parent_and_paths(
+        &HADOOP_CONFIG,
+        [
+            "hdfs-default.xml",
+            "hdfs-rbf-default.xml",
+            "hdfs-site.xml",
+            "hdfs-rbf-site.xml",
+        ].iter().cloned(),
+    );
 }
 
 #[derive(Debug, Error)]
@@ -168,25 +218,39 @@ impl Default for ConfigMap {
 }
 
 /**
-Load the XML Hadoop/HDFS config and return properties' name/values as
-dict.  It performs only minimal validation.
+Load the XML Hadoop/HDFS configs from a config groups, and return
+ConfigMap.
 */
-#[tracing::instrument(skip(config_paths))]
-pub fn load_config<'p, Paths: Iterator<Item = &'p Path>>(
-    config_paths: Paths,
-) -> Result<ConfigMap, ConfigError> {
+#[tracing::instrument]
+pub fn load_config(config_path_group: ConfigPathGroup) -> ConfigMap {
     let mut config_map = ConfigMap::new();
 
+    let config_paths = config_path_group.iter().map(get_config_path);
+
     for config_path in config_paths {
-        debug!("merging file {:?}", config_path);
+        debug!("merging config file {:?}", config_path);
         let mut buf = io::BufReader::new(
-            std::fs::File::open(config_path)
-                .map_err(|e| ConfigError::Io(e, config_path.to_owned()))?,
+            match std::fs::File::open(&config_path)
+                .map_err(|e| ConfigError::Io(e, config_path.to_owned()))
+            {
+                Ok(f) => f,
+                Err(e) => {
+                    debug!("failed to open config file: {:?}: {:?}", config_path, e);
+                    continue;
+                }
+            },
         );
 
-        config_map.merge_config(&mut buf, config_path)?;
+        match config_map.merge_config(&mut buf, &config_path) {
+            Ok(_) => {
+                debug!("config file {:?} successfully loaded", config_path);
+            }
+            Err(e) => {
+                warn!("failed to load config file {:?}: {:?}", config_path, e);
+            }
+        }
     }
-    Ok(config_map)
+    config_map
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -254,10 +318,24 @@ pub fn parse_config(conf: &ConfigMap) -> Vec<NameserviceConfig> {
 #[cfg(test)]
 mod tests {
     use io::Cursor;
+    use itertools::Itertools;
     use std::error::Error;
 
     use super::*;
 
+    #[test]
+    fn test_config_path_group() {
+        let group = ConfigPathGroup::from_paths(["a", "b", "c", "b", "c"].iter().cloned());
+        assert_eq!(group.iter().collect_vec(), vec!["a", "b", "c"]);
+    }
+
+    #[test]
+    fn test_config_path_group_parent() {
+        let parent = ConfigPathGroup::from_paths(["a", "b", "c"].iter().cloned());
+        let child =
+            ConfigPathGroup::from_parent_and_paths(&parent, ["c", "d", "e", "a"].iter().cloned());
+        assert_eq!(child.iter().collect_vec(), vec!["a", "b", "c", "d", "e"]);
+    }
     #[test]
     fn test_config_merge_config() -> Result<(), Box<dyn Error>> {
         let data = b"<?xml version=\"1.0\" encoding=\"UTF-8\"?><configuration>
