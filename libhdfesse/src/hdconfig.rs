@@ -79,6 +79,10 @@ impl ConfigMap {
         self.0.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
     pub fn get(&self, key: &str) -> Option<&ConfigData> {
         self.0.get(key)
     }
@@ -94,7 +98,7 @@ impl ConfigMap {
         old_final
     }
 
-    pub fn merge_config<'c, R: Read>(
+    pub fn merge_config<R: Read>(
         &mut self,
         r: R,
         config_path: &Path,
@@ -124,11 +128,11 @@ impl ConfigMap {
                 }
                 XmlEvent::Characters(text) => {
                     if elt.as_deref() == Some("name") {
-                        key = Some(text.into());
+                        key = Some(text);
                     } else if elt.as_deref() == Some("value") {
-                        val = Some(text.into());
+                        val = Some(text);
                     } else if elt.as_deref() == Some("final") {
-                        final_ = Some(text.into())
+                        final_ = Some(text)
                     }
                 }
                 _ => {}
@@ -136,6 +140,12 @@ impl ConfigMap {
         }
 
         Ok(())
+    }
+}
+
+impl Default for ConfigMap {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
