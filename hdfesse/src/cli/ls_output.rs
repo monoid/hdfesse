@@ -101,8 +101,8 @@ impl Record {
             perm: entry.get_permission().get_perm(),
             has_acl: entry.get_flags() & (HdfsFileStatusProto_Flags::HAS_ACL as u32) != 0,
             replication: entry.get_block_replication(),
-            owner: entry.take_owner().into_boxed_str(),
-            group: entry.take_group().into_boxed_str(),
+            owner: entry.take_owner().into(),
+            group: entry.take_group().into(),
             size: entry.get_length(),
             timestamp: if atime {
                 entry.get_access_time()
@@ -119,9 +119,6 @@ impl Record {
 
 pub(crate) trait FieldFormatter<W: Write> {
     fn update_len(&mut self, rec: &Record);
-    // TODO both print and print_streaming should get a StdoutLock,
-    // use write! to return io::Error for EPIPE to be handled in the
-    // main.
     fn print(&self, out: &mut W, rec: &Record) -> std::io::Result<()>;
     fn print_streaming(&self, out: &mut W, rec: &Record) -> std::io::Result<()>;
 }
