@@ -212,7 +212,7 @@ pub extern "C" fn hdfsBuilder() -> *mut hdfsBuilder {
 Sets the force_new_instance_flag.  If it is set, new connection to the
 name node is created instead of cached shared one.
 
-#Safety
+# Safety
 bld is a non-null pointer returned from hdfsBuilder() function.
 */
 #[no_mangle]
@@ -223,7 +223,7 @@ pub unsafe extern "C" fn hdfsBuilderSetForceNewInstance(bld: *mut hdfsBuilder) {
 /**
 Sets the namenode.  If never set or set to null, default namenode is used.
 
-#Safety
+# Safety
 
 bld is a non-null pointer returned from hdfsBuilder() function.  nn is
 a nul-terminated C string owned by the application.
@@ -236,7 +236,7 @@ pub unsafe extern "C" fn hdfsBuilderSetNameNode(bld: *mut hdfsBuilder, nn: *cons
 /**
 Sets the namenode port.  If never set, default port is used.
 
-#Safety
+# Safety
 bld is a non-null pointer returned from hdfsBuilder() function.
 */
 #[no_mangle]
@@ -248,7 +248,7 @@ pub unsafe extern "C" fn hdfsBuilderSetNameNodePort(bld: *mut hdfsBuilder, port:
 Sets the username.  If never set or set to null, the username is
 derived from the environment.
 
-#Safety
+# Safety
 
 bld is a non-null pointer returned from hdfsBuilder() function.  userName is
 a nul-terminated C string owned by the application.
@@ -260,7 +260,8 @@ pub unsafe extern "C" fn hdfsBuilderSetUserName(bld: *mut hdfsBuilder, userName:
 
 /**
 Sets the Kerberos ticket chache path.
-#Safety
+
+# Safety
 
 bld is a non-null pointer returned from hdfsBuilder() function.
 kerbTicketCachePath is a nul-terminated C string owned by the application.
@@ -273,6 +274,14 @@ pub unsafe extern "C" fn hdfsSetKerbTicketCachePath(
     expect_mut!(bld).kerb_ticket_cache_path = kerbTicketCachePath;
 }
 
+/**
+Free builder created with hdfsBuilder function.
+
+# Safety
+
+bld is a valid pointer returned from hdfsBuilder() function.
+
+*/
 #[no_mangle]
 pub unsafe extern "C" fn hdfsFreeBuilder(bld: *mut hdfsBuilder) {
     Box::from_raw(bld);
