@@ -20,6 +20,9 @@ use thiserror::Error;
 use tracing::{debug, info, warn};
 use xml::reader::{EventReader, XmlEvent};
 
+#[cfg(feature = "serde_support")]
+use serde::{Deserialize, Serialize};
+
 /// Try to get path to config from the environment.  It is either from
 /// HADOOP_CONF_DIR default variable or "/etc/hadoop/conf" directory.
 pub fn get_config_path(path: &str) -> PathBuf {
@@ -253,6 +256,7 @@ pub fn load_config(config_path_group: &ConfigPathGroup) -> ConfigMap {
 }
 
 #[derive(Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde_support", derive(Deserialize, Serialize))]
 pub struct NamenodeConfig {
     pub name: Box<str>,
     // We do not use materialized socket address because
@@ -262,6 +266,7 @@ pub struct NamenodeConfig {
 }
 
 #[derive(Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde_support", derive(Deserialize, Serialize))]
 pub struct NameserviceConfig {
     pub name: Box<str>,
     pub rpc_nodes: Vec<NamenodeConfig>,
@@ -284,6 +289,7 @@ fn parse_namenode(conf: &ConfigMap, namenode: &str, nameservice: &str) -> Option
     })
 }
 
+#[cfg_attr(feature = "serde_support", derive(Deserialize, Serialize))]
 pub struct Config {
     pub default_fs: Option<Box<str>>,
     pub services: Vec<NameserviceConfig>,

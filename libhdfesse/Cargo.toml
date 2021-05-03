@@ -6,12 +6,16 @@ edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+serde_support = ["serde"]
+
 [dependencies]
 hdfesse_proto = { path = "../hdfesse_proto" }
 itertools = "0.10"
 lazy_static = "1.4.0"
 phf = { version = "0.8", features = ["macros"] }
 protobuf = { version = "2", features = ["with-bytes"] }
+serde = { version = "1", features = ["derive"], optional = true }
 thiserror = "1.0"
 uriparse = "0.6"
 percent-encoding = "2.1"
