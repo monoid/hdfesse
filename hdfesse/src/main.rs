@@ -16,16 +16,13 @@
 mod cli;
 use anyhow::Result;
 use cli::Command;
-use libhdfesse::path::UriResolver;
+use libhdfesse::path::{Path, UriResolver};
+use libhdfesse::hdconfig::{HDFS_CONFIG, get_auto_config};
 use structopt::StructOpt;
 use tracing_subscriber::layer::SubscriberExt;
 
 #[derive(StructOpt)]
 struct HdfessseApp {
-    #[structopt(long)]
-    namenode: String,
-    #[structopt(long)]
-    user: Option<String>,
     #[structopt(subcommand)]
     subcmd: TopSubcmd,
 }
@@ -54,17 +51,15 @@ fn main() -> Result<()> {
 
     let opt = HdfessseApp::from_args();
 
-    let client = match &opt.user {
-        Some(user) => libhdfesse::rpc::HdfsConnection::new(
-            user.into(),
-            opt.namenode,
-            &libhdfesse::rpc::SimpleConnector {},
-        ),
-        None => libhdfesse::rpc::HdfsConnection::new_without_user(
-            opt.namenode,
-            &libhdfesse::rpc::SimpleConnector {},
-        ),
-    }?;
+    let config = get_auto_config(&HDFS_CONFIG);
+
+    let default_fs = Path::new(&config.default_fs.as_ref().expect("config without defaultFs is not supported; perhaps, config is not found"))?;
+
+    let client = libhdfesse::rpc::HdfsConnection::new_from_path(
+        &config,
+        default_fs,
+        &libhdfesse::rpc::SimpleConnector {},
+    )?;
 
     let service = libhdfesse::service::ClientNamenodeService::new(client);
     let resolve = UriResolver::new("STUB", service.get_user(), None, None)?;
