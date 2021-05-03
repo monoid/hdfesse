@@ -354,11 +354,30 @@ impl<'a> Path<'a> {
     pub fn basename(&self) -> Cow<'_, str> {
         // Unwrap is valid as uriparse::Path always contains at least
         // one segment.
+        // TODO encode or decode?
         percent_encoding::utf8_percent_encode(
             self.path.path().segments().last().unwrap().as_str(),
             PATH_PERCENT_ENCODE_SET,
         )
         .into()
+    }
+
+    pub fn host(&self) -> Option<String> {
+        self.path.host().map(
+            // TODO encode or decode?
+            |host| percent_encoding::percent_decode_str(
+                &host.to_string(),
+            ).decode_utf8().unwrap().to_string()
+        )
+    }
+
+    pub fn user(&self) -> Option<String> {
+        self.path.username().map(
+            // TODO encode or decode?
+            |user| percent_encoding::percent_decode_str(
+                &user.to_string(),
+            ).decode_utf8().unwrap().to_string()
+        )
     }
 }
 
@@ -745,5 +764,43 @@ mod tests {
     fn test_path_basename_dotdot() {
         let path = Path::new("..").unwrap();
         assert_eq!(path.basename(), "..");
+    }
+
+    #[test]
+    fn test_path_hostname_absent() {
+        let path = Path::new("/test").unwrap();
+        assert_eq!(path.host(), None);
+    }
+
+    #[test]
+    fn test_path_hostname_empty() {
+        let path = Path::new("///test").unwrap();
+        // It is not clear how should we cope with it.  Perhaps, returning
+        // None is sane.
+        assert_eq!(path.host(), Some("".to_string()));
+    }
+
+    #[test]
+    fn test_path_hostname_esc() {
+        let path = Path::new("//test%20me/test").unwrap();
+        assert_eq!(path.host(), Some("test me".to_string()));
+    }
+
+    #[test]
+    fn test_path_user_absent() {
+        let path = Path::new("/test").unwrap();
+        assert_eq!(path.user(), None);
+    }
+
+    #[test]
+    fn test_path_user_empty() {
+        let path = Path::new("///test").unwrap();
+        assert_eq!(path.user(), None);
+    }
+
+    #[test]
+    fn test_path_user_esc() {
+        let path = Path::new("//the%20user@test%20me/test").unwrap();
+        assert_eq!(path.user(), Some("the user".to_string()));
     }
 }
