@@ -16,12 +16,14 @@
 use std::io::{self, Read, Write};
 use std::net::TcpStream;
 use std::net::ToSocketAddrs;
-use std::{borrow::Cow, fmt::Debug};
+use std::{borrow::Cow, fmt::Debug, ops::Deref};
 
 use thiserror::Error;
 use tracing::{instrument, trace};
 
 use crate::util;
+use crate::hdconfig;
+use crate::path::Path;
 use hdfesse_proto::IpcConnectionContext::*;
 use hdfesse_proto::ProtobufRpcEngine::RequestHeaderProto;
 use hdfesse_proto::RpcHeader::*;
@@ -169,13 +171,38 @@ pub struct HdfsConnection {
 }
 
 impl HdfsConnection {
+    pub fn new_from_path<C: Connector, Cfg: Deref<Target=hdconfig::Config>>(
+        config: Cfg, path: Path, connector: &C,
+    ) -> Result<Self, RpcConnectError<C::Error>> {
+        let host = path.host().expect("TODO: expected host");
+        for serv in &config.services {
+            if serv.name.as_ref() == host {
+                let addr = serv.rpc_nodes[0].rpc_address.as_ref();
+                let user = path.user().map(Into::into);
+                return Self::new_with_user(user, addr, connector);
+            }
+        }
+        unimplemented!("TODO: handle service undefined in the config")
+    }
+
+    pub fn new_with_user<C: Connector, A: ToSocketAddrs>(
+        user: Option<Cow<'_, str>>,
+        addr: A,
+        connector: &C,
+    ) -> Result<Self, RpcConnectError<C::Error>> {
+        let user = user.map(Ok).unwrap_or_else(|| {
+            util::get_username()
+                .map(Into::into)
+                .map_err(RpcConnectError::NoUser)
+        })?;
+        Self::new(user, addr, connector)
+    }
+
     pub fn new_without_user<C: Connector, A: ToSocketAddrs>(
         addr: A,
         connector: &C,
     ) -> Result<Self, RpcConnectError<C::Error>> {
-        util::get_username()
-            .map_err(RpcConnectError::NoUser)
-            .and_then(|name| Self::new(name.into(), addr, connector))
+        Self::new_with_user(None, addr, connector)
     }
 
     /** Connect to HDFS master NameNode, creating a new HdfsConnection.
