@@ -20,9 +20,8 @@ use thiserror::Error;
 use tracing::{debug, info, warn};
 use xml::reader::{EventReader, XmlEvent};
 
-/// Try to get path to config from the environment.  It is the
-/// "hdfs-site.xml" either from HADOOP_CONF_DIR default variable or
-/// "/etc/hadoop/conf" directory.
+/// Try to get path to config from the environment.  It is either from
+/// HADOOP_CONF_DIR default variable or "/etc/hadoop/conf" directory.
 pub fn get_config_path(path: &str) -> PathBuf {
     let conf_dir = std::env::var_os("HADOOP_CONF_DIR").unwrap_or_else(|| "/etc/hadoop/conf".into());
     PathBuf::from(conf_dir).join(path)
@@ -222,7 +221,7 @@ Load the XML Hadoop/HDFS configs from a config groups, and return
 ConfigMap.
 */
 #[tracing::instrument]
-pub fn load_config(config_path_group: ConfigPathGroup) -> ConfigMap {
+pub fn load_config(config_path_group: &ConfigPathGroup) -> ConfigMap {
     let mut config_map = ConfigMap::new();
 
     let config_paths = config_path_group.iter().map(get_config_path);
@@ -285,10 +284,14 @@ fn parse_namenode(conf: &ConfigMap, namenode: &str, nameservice: &str) -> Option
     })
 }
 
-/// Return named NameserviceConfig pairs.  First nameservice config is
-/// the default one, isn't it?
-pub fn parse_config(conf: &ConfigMap) -> Vec<NameserviceConfig> {
-    let mut res = vec![];
+pub struct Config {
+    pub default_fs: Option<Box<str>>,
+    pub services: Vec<NameserviceConfig>,
+}
+
+/// Get useful data as a config object.
+pub fn parse_config(conf: &ConfigMap) -> Config {
+    let mut services = vec![];
 
     for name in conf
         .get("dfs.nameservices")
@@ -309,10 +312,20 @@ pub fn parse_config(conf: &ConfigMap) -> Vec<NameserviceConfig> {
                 .flat_map(|namenode| parse_namenode(conf, namenode, name))
                 .collect(),
         };
-        res.push(serv);
+        services.push(serv);
     }
 
-    res
+    let default_fs = conf.get("fs.defaultFS").map(
+        |x| x.value.trim().into());
+
+    Config {
+        default_fs,
+        services,
+    }
+}
+
+pub fn get_auto_config(config_path_group: &ConfigPathGroup) -> Config {
+    parse_config(&load_config(config_path_group))
 }
 
 #[cfg(test)]
