@@ -353,7 +353,7 @@ impl HdfsConnection {
             }),
         };
 
-        trace!(target = "call", "call complete: {}", method_name);
+        trace!(target = "call", "call complete: {}, res: {:?}", method_name, res);
 
         res
     }
