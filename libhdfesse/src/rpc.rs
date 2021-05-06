@@ -160,6 +160,26 @@ pub static ERROR_CLASS_MAP: ::phf::Map<&'static str, RpcErrorKind> = ::phf::phf_
 };
 
 /**
+ * HDFS connecion, e.g. simple or HA.
+ */
+pub trait RpcConnection {
+    /// Get user name.
+    fn get_user(&self) -> &str;
+
+    /// Perform an rpc call over the connection.
+    // TODO I failed to read to &dyn Message easily with current
+    // protobuf, thus this method has Output type argument.
+    fn call<Output: Message>(
+        &mut self,
+        method_name: Cow<'_, str>,
+        input: &dyn Message,
+    ) -> Result<Output, RpcError>;
+
+    /// Shoutdown the connection.
+    fn shutdown(self) -> Result<(), RpcError>;
+}
+
+/**
  * HDFS connection, i.e. connection to HDFS master NameNode.
  */
 #[derive(Debug)]
@@ -275,15 +295,15 @@ impl HdfsConnection {
         }
         Ok(cos.flush()?)
     }
+}
 
-    pub fn get_user(&self) -> &str {
+impl RpcConnection for HdfsConnection {
+    fn get_user(&self) -> &str {
         &self.user
     }
 
-    // TODO I failed to read to &dyn Message easily with current
-    // protobuf, thus this method has Output type argument.
     #[instrument]
-    pub fn call<Output: Message>(
+    fn call<Output: Message>(
         &mut self,
         method_name: Cow<'_, str>,
         input: &dyn Message,
@@ -362,7 +382,7 @@ impl HdfsConnection {
     /// Drop::drop, but it wouldn't work for the anticipated async
     /// version.
     #[instrument]
-    pub fn shutdown(mut self) -> Result<(), RpcError> {
+    fn shutdown(mut self) -> Result<(), RpcError> {
         let mut hh = RpcRequestHeaderProto::default();
         hh.set_rpcKind(RpcKindProto::RPC_PROTOCOL_BUFFER);
         hh.set_rpcOp(RpcRequestHeaderProto_OperationProto::RPC_CLOSE_CONNECTION);

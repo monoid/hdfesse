@@ -23,12 +23,12 @@ use crate::rpc;
 
 type Result<V> = std::result::Result<V, rpc::RpcError>;
 
-pub struct ClientNamenodeService {
-    conn: rpc::HdfsConnection,
+pub struct ClientNamenodeService<C: rpc::RpcConnection> {
+    conn: C,
 }
 
-impl ClientNamenodeService {
-    pub fn new(conn: rpc::HdfsConnection) -> Self {
+impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
+    pub fn new(conn: C) -> Self {
         Self { conn }
     }
 

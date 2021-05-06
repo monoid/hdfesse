@@ -120,12 +120,12 @@ pub fn ensure_not_exists(
 }
 
 pub struct Hdfs {
-    service: service::ClientNamenodeService,
+    service: service::ClientNamenodeService<rpc::HdfsConnection>,
     resolve: UriResolver,
 }
 
 impl Hdfs {
-    pub fn new(service: service::ClientNamenodeService, resolve: UriResolver) -> Self {
+    pub fn new(service: service::ClientNamenodeService<rpc::HdfsConnection>, resolve: UriResolver) -> Self {
         Self { service, resolve }
     }
 
