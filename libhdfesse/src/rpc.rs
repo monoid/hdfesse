@@ -39,9 +39,8 @@ const RPC_HDFS_PROTOCOL: &str = "org.apache.hadoop.hdfs.protocol.ClientProtocol"
  * code to implement), exponentional retries, etc.
  */
 pub trait Connector {
-    type Error: std::error::Error + Debug;
     // async
-    fn get_connection<T: ToSocketAddrs>(&self, addr: T) -> Result<TcpStream, Self::Error>;
+    fn get_connection<T: ToSocketAddrs>(&self, addr: T) -> Result<TcpStream, io::Error>;
 }
 
 /**
@@ -50,9 +49,8 @@ pub trait Connector {
 pub struct SimpleConnector {}
 
 impl Connector for SimpleConnector {
-    type Error = io::Error;
     // async
-    fn get_connection<T: ToSocketAddrs>(&self, addr: T) -> Result<TcpStream, Self::Error> {
+    fn get_connection<T: ToSocketAddrs>(&self, addr: T) -> Result<TcpStream, io::Error> {
         TcpStream::connect(addr)
     }
 }
@@ -86,16 +84,6 @@ impl Default for InfiniteSeq {
 pub type RpcStatus = RpcResponseHeaderProto_RpcStatusProto;
 pub type RpcErrorCode = RpcResponseHeaderProto_RpcErrorCodeProto;
 
-#[derive(Debug, Error)]
-pub enum RpcConnectError<CE: std::error::Error + Debug + 'static> {
-    #[error(transparent)]
-    Connector(CE),
-    #[error(transparent)]
-    Rpc(RpcError),
-    #[error(transparent)]
-    NoUser(Box<dyn std::error::Error + Send + Sync>),
-}
-
 #[derive(Debug, Clone, Copy)]
 pub enum RpcErrorKind {
     Snapshot,
@@ -103,6 +91,10 @@ pub enum RpcErrorKind {
 
 #[derive(Debug, Error)]
 pub enum RpcError {
+    #[error(transparent)]
+    Connector(io::Error),
+    #[error(transparent)]
+    NoUser(Box<dyn std::error::Error + Send + Sync>),
     #[error(transparent)]
     Io(#[from] io::Error),
     #[error(transparent)]
@@ -193,7 +185,7 @@ pub struct HdfsConnection {
 impl HdfsConnection {
     pub fn new_from_path<C: Connector, Cfg: Deref<Target=hdconfig::Config>>(
         config: Cfg, path: Path, connector: &C,
-    ) -> Result<Self, RpcConnectError<C::Error>> {
+    ) -> Result<Self, RpcError> {
         let host = path.host().expect("TODO: expected host");
         for serv in &config.services {
             if serv.name.as_ref() == host {
@@ -209,11 +201,11 @@ impl HdfsConnection {
         user: Option<Cow<'_, str>>,
         addr: A,
         connector: &C,
-    ) -> Result<Self, RpcConnectError<C::Error>> {
+    ) -> Result<Self, RpcError> {
         let user = user.map(Ok).unwrap_or_else(|| {
             util::get_username()
                 .map(Into::into)
-                .map_err(RpcConnectError::NoUser)
+                .map_err(RpcError::NoUser)
         })?;
         Self::new(user, addr, connector)
     }
@@ -221,7 +213,7 @@ impl HdfsConnection {
     pub fn new_without_user<C: Connector, A: ToSocketAddrs>(
         addr: A,
         connector: &C,
-    ) -> Result<Self, RpcConnectError<C::Error>> {
+    ) -> Result<Self, RpcError> {
         Self::new_with_user(None, addr, connector)
     }
 
@@ -231,10 +223,10 @@ impl HdfsConnection {
         user: Cow<'_, str>,
         addr: A,
         connector: &C,
-    ) -> Result<Self, RpcConnectError<C::Error>> {
+    ) -> Result<Self, RpcError> {
         let stream = connector
             .get_connection(addr)
-            .map_err(RpcConnectError::Connector)?;
+            .map_err(RpcError::Connector)?;
         Self {
             stream,
             user: user.into(),
@@ -244,7 +236,6 @@ impl HdfsConnection {
             client_id: *uuid::Uuid::new_v4().as_bytes(),
         }
         .init_connection()
-        .map_err(RpcConnectError::Rpc)
     }
 
     #[instrument]
