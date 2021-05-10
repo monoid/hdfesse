@@ -74,9 +74,7 @@ impl<C: Connector + std::fmt::Debug> HaHdfsConnection<C> {
     #[instrument]
     fn try_connect(&mut self, attempts_left: &mut usize) -> Result<&mut HdfsConnection, RpcError> {
         let mut last_err = None;
-        // TODO TODO TODO This is a loop for network errors, however,
-        // for the standby node it is not limited yet.  It will loop
-        // if there is no master node.
+
         for addr in self.connections.by_ref().take(*attempts_left) {
             // TODO: retry on network error?
             trace!(
