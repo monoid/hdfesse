@@ -365,18 +365,24 @@ impl<'a> Path<'a> {
     pub fn host(&self) -> Option<String> {
         self.path.host().map(
             // TODO encode or decode?
-            |host| percent_encoding::percent_decode_str(
-                &host.to_string(),
-            ).decode_utf8().unwrap().to_string()
+            |host| {
+                percent_encoding::percent_decode_str(&host.to_string())
+                    .decode_utf8()
+                    .unwrap()
+                    .to_string()
+            },
         )
     }
 
     pub fn user(&self) -> Option<String> {
         self.path.username().map(
             // TODO encode or decode?
-            |user| percent_encoding::percent_decode_str(
-                &user.to_string(),
-            ).decode_utf8().unwrap().to_string()
+            |user| {
+                percent_encoding::percent_decode_str(&user.to_string())
+                    .decode_utf8()
+                    .unwrap()
+                    .to_string()
+            },
         )
     }
 }

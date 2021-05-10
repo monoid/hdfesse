@@ -321,8 +321,7 @@ pub fn parse_config(conf: &ConfigMap) -> Config {
         services.push(serv);
     }
 
-    let default_fs = conf.get("fs.defaultFS").map(
-        |x| x.value.trim().into());
+    let default_fs = conf.get("fs.defaultFS").map(|x| x.value.trim().into());
 
     Config {
         default_fs,

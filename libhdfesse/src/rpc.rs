@@ -21,9 +21,9 @@ use std::{borrow::Cow, fmt::Debug, ops::Deref};
 use thiserror::Error;
 use tracing::{instrument, trace};
 
-use crate::util;
 use crate::hdconfig;
 use crate::path::Path;
+use crate::util;
 use hdfesse_proto::IpcConnectionContext::*;
 use hdfesse_proto::ProtobufRpcEngine::RequestHeaderProto;
 use hdfesse_proto::RpcHeader::*;
@@ -184,8 +184,10 @@ pub struct HdfsConnection {
 }
 
 impl HdfsConnection {
-    pub fn new_from_path<C: Connector, Cfg: Deref<Target=hdconfig::Config>>(
-        config: Cfg, path: Path, connector: &C,
+    pub fn new_from_path<C: Connector, Cfg: Deref<Target = hdconfig::Config>>(
+        config: Cfg,
+        path: Path,
+        connector: &C,
     ) -> Result<Self, RpcError> {
         let host = path.host().expect("TODO: expected host");
         for serv in &config.services {
@@ -365,7 +367,12 @@ impl RpcConnection for HdfsConnection {
             }),
         };
 
-        trace!(target = "call", "call complete: {}, res: {:?}", method_name, res);
+        trace!(
+            target = "call",
+            "call complete: {}, res: {:?}",
+            method_name,
+            res
+        );
 
         res
     }
