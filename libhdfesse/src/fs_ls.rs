@@ -15,22 +15,27 @@
 */
 use std::iter::{ExactSizeIterator, FusedIterator};
 
-use crate::{fs::FsError, path::Path, rpc::{self, RpcError}, service::ClientNamenodeService};
+use crate::{
+    fs::FsError,
+    path::Path,
+    rpc::{RpcConnection, RpcError},
+    service::ClientNamenodeService,
+};
 use protobuf::RepeatedField;
 
 use hdfesse_proto::hdfs::HdfsFileStatusProto;
 
-pub struct LsGroupIterator<'a> {
+pub struct LsGroupIterator<'a, R: RpcConnection> {
     path_string: String,
     prev_name: Option<Vec<u8>>,
     len: Option<usize>,
     count: usize,
 
-    service: &'a mut ClientNamenodeService<rpc::HdfsConnection>,
+    service: &'a mut ClientNamenodeService<R>,
 }
 
-impl<'a> LsGroupIterator<'a> {
-    pub fn new(service: &'a mut ClientNamenodeService<rpc::HdfsConnection>, path: &Path<'_>) -> Self {
+impl<'a, R: RpcConnection> LsGroupIterator<'a, R> {
+    pub fn new(service: &'a mut ClientNamenodeService<R>, path: &Path<'_>) -> Self {
         Self {
             path_string: path.to_path_string(),
             prev_name: Default::default(),
@@ -65,7 +70,7 @@ impl<'a> LsGroupIterator<'a> {
     }
 }
 
-impl<'a> Iterator for LsGroupIterator<'a> {
+impl<'a, R: RpcConnection> Iterator for LsGroupIterator<'a, R> {
     type Item = Result<(usize, RepeatedField<HdfsFileStatusProto>), FsError>;
 
     fn next(&mut self) -> Option<Self::Item> {

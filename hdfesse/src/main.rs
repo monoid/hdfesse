@@ -16,8 +16,8 @@
 mod cli;
 use anyhow::Result;
 use cli::Command;
+use libhdfesse::hdconfig::{get_auto_config, HDFS_CONFIG};
 use libhdfesse::path::{Path, UriResolver};
-use libhdfesse::hdconfig::{HDFS_CONFIG, get_auto_config};
 use structopt::StructOpt;
 use tracing_subscriber::layer::SubscriberExt;
 
@@ -53,13 +53,29 @@ fn main() -> Result<()> {
 
     let config = get_auto_config(&HDFS_CONFIG);
 
-    let default_fs = Path::new(&config.default_fs.as_ref().expect("config without defaultFs is not supported; perhaps, config is not found"))?;
-
-    let client = libhdfesse::rpc::HdfsConnection::new_from_path(
-        &config,
-        default_fs,
-        &libhdfesse::rpc::SimpleConnector {},
+    let default_fs = Path::new(
+        &config
+            .default_fs
+            .as_ref()
+            .expect("config without defaultFs is not supported; perhaps, config is not found"),
     )?;
+
+    let dfs = default_fs
+        .host()
+        .expect("defaultFS has to have a host, otherwise not supported");
+
+    let ns = match config
+        .services
+        .iter()
+        .find(|s| s.name.as_ref() == dfs.as_str())
+    {
+        Some(x) => x,
+        None => {
+            panic!("Service {:?} not found", dfs);
+        }
+    };
+    let client =
+        libhdfesse::ha_rpc::HaHdfsConnection::new(&ns, libhdfesse::rpc::SimpleConnector {})?;
 
     let service = libhdfesse::service::ClientNamenodeService::new(client);
     let resolve = UriResolver::new("STUB", service.get_user(), None, None)?;

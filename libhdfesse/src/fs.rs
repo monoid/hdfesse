@@ -19,7 +19,8 @@ pub use crate::fs_ls::LsGroupIterator;
 use crate::{
     fs_ls::LsIterator,
     path::{Path, PathError, UriResolver},
-    rpc, service,
+    rpc::{self, RpcConnection},
+    service,
 };
 use hdfesse_proto::{
     acl::FsPermissionProto,
@@ -119,13 +120,13 @@ pub fn ensure_not_exists(
     }
 }
 
-pub struct Hdfs {
-    service: service::ClientNamenodeService<rpc::HdfsConnection>,
+pub struct Hdfs<R: RpcConnection> {
+    service: service::ClientNamenodeService<R>,
     resolve: UriResolver,
 }
 
-impl Hdfs {
-    pub fn new(service: service::ClientNamenodeService<rpc::HdfsConnection>, resolve: UriResolver) -> Self {
+impl<R: RpcConnection> Hdfs<R> {
+    pub fn new(service: service::ClientNamenodeService<R>, resolve: UriResolver) -> Self {
         Self { service, resolve }
     }
 

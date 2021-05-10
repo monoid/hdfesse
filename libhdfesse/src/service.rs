@@ -36,6 +36,10 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         self.conn.get_user()
     }
 
+    pub fn into_inner(self) -> C {
+        self.conn
+    }
+
     // TODO this op takes args, other take proto struct.
     #[allow(non_snake_case)]
     pub fn getListing(
@@ -877,7 +881,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &HAServiceStateRequestProto,
     ) -> Result<HAServiceStateResponseProto> {
-        self.conn.call(Cow::Borrowed("getHAServiceState"), args)
+        self.conn.call(Cow::Borrowed("getServiceState"), args)
     }
 
     #[inline]

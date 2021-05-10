@@ -46,6 +46,7 @@ pub trait Connector {
 /**
  * Simpliest implementation of connector without any retry.
  */
+#[derive(Debug)]
 pub struct SimpleConnector {}
 
 impl Connector for SimpleConnector {
