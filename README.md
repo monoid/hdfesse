@@ -1,6 +1,6 @@
 # hdfesse
 
-Rust async HDFS client library with libhdfs.so and hdfs util drop-in
+Rust ~~async~~ HDFS client library with libhdfs.so and hdfs util drop-in
 replacements.
 
 This project is in its early stage and is not yet functional.
@@ -17,3 +17,9 @@ This project is in its early stage and is not yet functional.
     guarantee.
   + Rust strings consider surrogate chars as invalid, so it your paths
     contain them, hdfesse/libhdfesse/libhfs will immediately complain.
+
+## Features
+
+  + `serde_support` for `libhdfesse`: Serde serialize/deserialize for HA config
+    structs.  So, you may load the Config from Hadoop configs, or deserialize
+    it from your own data.
