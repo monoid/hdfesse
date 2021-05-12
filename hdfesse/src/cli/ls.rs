@@ -18,11 +18,8 @@ use std::cmp::Reverse;
 use super::Command;
 use crate::cli::ls_output::{LineFormat, Record};
 use hdfesse_proto::hdfs::HdfsFileStatusProto_FileType;
+use libhdfesse::fs::{Hdfs, HdfsError};
 use libhdfesse::path::{Path, PathError};
-use libhdfesse::{
-    fs::{Hdfs, HdfsError},
-    rpc::RpcConnection,
-};
 use structopt::StructOpt;
 use thiserror::Error;
 use tracing::{span, trace, Level};
@@ -107,12 +104,12 @@ pub enum LsError {
     LocalIo(std::io::Error),
 }
 
-pub struct Ls<'a, R: RpcConnection> {
-    hdfs: &'a mut Hdfs<R>,
+pub struct Ls<'a> {
+    hdfs: &'a mut Hdfs,
 }
 
-impl<'a, R: RpcConnection> Ls<'a, R> {
-    pub fn new(hdfs: &'a mut Hdfs<R>) -> Self {
+impl<'a> Ls<'a> {
+    pub fn new(hdfs: &'a mut Hdfs) -> Self {
         Self { hdfs }
     }
 
@@ -217,7 +214,7 @@ impl<'a, R: RpcConnection> Ls<'a, R> {
     }
 }
 
-impl<'a, R: RpcConnection> Command for Ls<'a, R> {
+impl<'a> Command for Ls<'a> {
     type Args = LsArgs;
     type Error = LsError;
 

@@ -15,7 +15,7 @@
 */
 use super::Command;
 use anyhow::Result;
-use libhdfesse::{fs::Hdfs, path::Path, rpc::RpcConnection};
+use libhdfesse::{fs::Hdfs, path::Path};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -26,17 +26,17 @@ pub struct MvArgs {
     dst: String,
 }
 
-pub struct Mv<'a, R: RpcConnection> {
-    hdfs: &'a mut Hdfs<R>,
+pub struct Mv<'a> {
+    hdfs: &'a mut Hdfs,
 }
 
-impl<'a, R: RpcConnection> Mv<'a, R> {
-    pub fn new(hdfs: &'a mut Hdfs<R>) -> Self {
+impl<'a> Mv<'a> {
+    pub fn new(hdfs: &'a mut Hdfs) -> Self {
         Self { hdfs }
     }
 }
 
-impl<'a, R: RpcConnection> Command for Mv<'a, R> {
+impl<'a> Command for Mv<'a> {
     type Args = MvArgs;
     type Error = anyhow::Error;
 

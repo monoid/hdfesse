@@ -18,7 +18,6 @@ use anyhow::Result;
 use libhdfesse::{
     fs::{Hdfs, HdfsError},
     path::{Path, PathError},
-    rpc::RpcConnection,
 };
 use structopt::StructOpt;
 use thiserror::Error;
@@ -40,12 +39,12 @@ pub enum MkdirError {
     Fs(#[from] HdfsError),
 }
 
-pub struct Mkdir<'a, R: RpcConnection> {
-    hdfs: &'a mut Hdfs<R>,
+pub struct Mkdir<'a> {
+    hdfs: &'a mut Hdfs,
 }
 
-impl<'a, R: RpcConnection> Mkdir<'a, R> {
-    pub fn new(hdfs: &'a mut Hdfs<R>) -> Self {
+impl<'a> Mkdir<'a> {
+    pub fn new(hdfs: &'a mut Hdfs) -> Self {
         Self { hdfs }
     }
 
@@ -57,7 +56,7 @@ impl<'a, R: RpcConnection> Mkdir<'a, R> {
     }
 }
 
-impl<'a, R: RpcConnection> Command for Mkdir<'a, R> {
+impl<'a> Command for Mkdir<'a> {
     type Args = MkdirArgs;
     type Error = anyhow::Error;
 

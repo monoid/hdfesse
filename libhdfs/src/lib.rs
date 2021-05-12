@@ -66,9 +66,7 @@ pub enum tObjectKind {
 }
 
 #[allow(clippy::upper_case_acronyms)]
-pub type hdfsFS = *mut libhdfesse::fs::Hdfs<
-    libhdfesse::ha_rpc::HaHdfsConnection<libhdfesse::rpc::SimpleConnector>,
->;
+pub type hdfsFS = *mut libhdfesse::fs::Hdfs;
 // TODO make these types distinct
 pub type hdfsStreamBuilder = c_void;
 pub type hadoopRzOptions = c_void;

@@ -120,7 +120,7 @@ pub fn ensure_not_exists(
     }
 }
 
-pub struct Hdfs<R: RpcConnection> {
+pub struct Hdfs<R: RpcConnection = crate::ha_rpc::HaHdfsConnection<crate::rpc::SimpleConnector>> {
     service: service::ClientNamenodeService<R>,
     resolve: UriResolver,
 }
