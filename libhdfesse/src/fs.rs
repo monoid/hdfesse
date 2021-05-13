@@ -25,7 +25,7 @@ use crate::{
 use hdfesse_proto::{
     acl::FsPermissionProto,
     hdfs::{HdfsFileStatusProto, HdfsFileStatusProto_FileType},
-    ClientNamenodeProtocol::MkdirsRequestProto,
+    ClientNamenodeProtocol::{DeleteRequestProto, MkdirsRequestProto},
 };
 use thiserror::Error;
 
@@ -41,6 +41,8 @@ pub enum FsError {
     Rpc(rpc::RpcError),
     #[error("`{0}': Is not a directory")]
     NotDir(String),
+    #[error("`{0}': Is a directory")]
+    IsDir(String),
     #[error("`{0}': File exists")]
     FileExists(String),
 }
@@ -101,6 +103,21 @@ pub fn ensure_dir(
         Err(HdfsError {
             kind,
             source: FsError::NotDir(path.into_owned()),
+        })
+    }
+}
+
+pub fn ensure_not_dir(
+    file_info: &HdfsFileStatusProto,
+    path: Cow<'_, str>,
+    kind: HdfsErrorKind,
+) -> Result<(), HdfsError> {
+    if file_info.get_fileType() != HdfsFileStatusProto_FileType::IS_DIR {
+        Ok(())
+    } else {
+        Err(HdfsError {
+            kind,
+            source: FsError::IsDir(path.into_owned()),
         })
     }
 }
@@ -198,6 +215,26 @@ impl<R: RpcConnection> Hdfs<R> {
             .map_err(FsError::Rpc)
             .map_err(HdfsError::op)
             .map(|_| ())
+    }
+
+    /// Delete path
+    pub fn delete(&mut self, path: &Path, recursive: bool) -> Result<bool, HdfsError> {
+        let path_res = self.resolve.resolve_path(path).map_err(HdfsError::src)?;
+        if !recursive {
+            ensure_not_dir(
+                &self.get_file_info(path).map_err(HdfsError::src)?,
+                path.to_string().into(),
+                HdfsErrorKind::Src,
+            )?;
+        }
+        let mut args = DeleteRequestProto::default();
+        args.set_src(path_res.to_path_string());
+        args.set_recursive(recursive);
+        self.service
+            .delete(&args)
+            .map_err(FsError::Rpc)
+            .map_err(HdfsError::src)
+            .map(|resp| resp.get_result())
     }
 
     #[inline]

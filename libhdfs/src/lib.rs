@@ -535,9 +535,39 @@ pub extern "C" fn hdfsMove(
     unimplemented!()
 }
 
+/**
+
+Delete a file.  Directories can be removed recursively only.  Return 1
+if deletion is successful, 0 if not, negative value on error (like
+network error or non-recursive directory deletion).
+
+# Safety
+
+fs value should be a value constructed with hdfs*Connect* family of
+functions, and path is a null-terminated C string.
+
+*/
 #[no_mangle]
-pub extern "C" fn hdfsDelete(_fs: hdfsFS, _pat: *const c_char, _recursive: c_int) -> c_int {
-    unimplemented!()
+pub unsafe extern "C" fn hdfsDelete(fs: hdfsFS, path: *const c_char, recursive: c_int) -> c_int {
+    let path = CStr::from_ptr(path).to_str();
+    let fs = expect_mut!(fs);
+
+    let path = path.map_err(PathError::Utf8).and_then(Path::new);
+
+    match path {
+        Ok(path) => match fs.delete(&path, recursive != 0) {
+            Ok(n) => n as _,
+            Err(e) => {
+                errors::set_errno_with_hadoop_error(e);
+                -1
+            }
+        },
+        _ => {
+            // TODO seems to be the only option.
+            libc::__errno_location().write(errors::EINTERNAL);
+            -1
+        }
+    }
 }
 
 #[no_mangle]

@@ -17,6 +17,7 @@ pub mod ls;
 mod ls_output;
 pub mod mkdir;
 pub mod mv;
+pub mod rm;
 
 pub trait Command {
     type Args: structopt::StructOpt;

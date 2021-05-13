@@ -41,6 +41,8 @@ enum Dfs {
     Mv(cli::mv::MvArgs),
     #[structopt(name = "-mkdir")]
     Mkdir(cli::mkdir::MkdirArgs),
+    #[structopt(name = "-rm")]
+    Rm(cli::rm::RmArgs),
 }
 
 fn main() -> Result<()> {
@@ -86,6 +88,7 @@ fn main() -> Result<()> {
             Dfs::Ls(ls_args) => cli::ls::Ls::new(&mut hdfs).run(ls_args)?,
             Dfs::Mv(mv_args) => cli::mv::Mv::new(&mut hdfs).run(mv_args)?,
             Dfs::Mkdir(mkdir_args) => cli::mkdir::Mkdir::new(&mut hdfs).run(mkdir_args)?,
+            Dfs::Rm(rm_args) => cli::rm::Rm::new(&mut hdfs).run(rm_args)?,
         },
     };
     hdfs.shutdown()?;
