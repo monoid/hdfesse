@@ -17,7 +17,6 @@ use hdfesse_proto::{
     acl::*, encryption::*, erasurecoding::*, hdfs::HdfsFileStatusProto, xattr::*,
     ClientNamenodeProtocol::*, Security::*,
 };
-use std::borrow::Cow;
 
 use crate::rpc;
 
@@ -53,7 +52,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         list.set_startAfter(startAfter);
         list.set_needLocation(needLocation);
 
-        let data: GetListingResponseProto = self.conn.call(Cow::Borrowed("getListing"), &list)?;
+        let data: GetListingResponseProto = self.conn.call("getListing".into(), &list)?;
 
         Ok(data)
     }
@@ -63,7 +62,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &GetBlockLocationsRequestProto,
     ) -> Result<GetBlockLocationsResponseProto> {
-        self.conn.call(Cow::Borrowed("getBlockLocations"), args)
+        self.conn.call("getBlockLocations".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -71,17 +70,17 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &GetServerDefaultsRequestProto,
     ) -> Result<GetServerDefaultsResponseProto> {
-        self.conn.call(Cow::Borrowed("getServerDefaults"), args)
+        self.conn.call("getServerDefaults".into(), args)
     }
 
     #[allow(non_snake_case)]
     pub fn create(&mut self, args: &CreateRequestProto) -> Result<CreateResponseProto> {
-        self.conn.call(Cow::Borrowed("create"), args)
+        self.conn.call("create".into(), args)
     }
 
     #[allow(non_snake_case)]
     pub fn append(&mut self, args: &AppendRequestProto) -> Result<AppendResponseProto> {
-        self.conn.call(Cow::Borrowed("append"), args)
+        self.conn.call("append".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -89,7 +88,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &SetReplicationRequestProto,
     ) -> Result<SetReplicationResponseProto> {
-        self.conn.call(Cow::Borrowed("setReplication"), args)
+        self.conn.call("setReplication".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -97,7 +96,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &SetStoragePolicyRequestProto,
     ) -> Result<SetStoragePolicyResponseProto> {
-        self.conn.call(Cow::Borrowed("setStoragePolicy"), args)
+        self.conn.call("setStoragePolicy".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -105,7 +104,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &UnsetStoragePolicyRequestProto,
     ) -> Result<UnsetStoragePolicyResponseProto> {
-        self.conn.call(Cow::Borrowed("unsetStoragePolicy"), args)
+        self.conn.call("unsetStoragePolicy".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -113,7 +112,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &GetStoragePolicyRequestProto,
     ) -> Result<GetStoragePolicyResponseProto> {
-        self.conn.call(Cow::Borrowed("getStoragePolicy"), args)
+        self.conn.call("getStoragePolicy".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -121,7 +120,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &GetStoragePoliciesRequestProto,
     ) -> Result<GetStoragePoliciesResponseProto> {
-        self.conn.call(Cow::Borrowed("getStoragePolicies"), args)
+        self.conn.call("getStoragePolicies".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -129,12 +128,12 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &SetPermissionRequestProto,
     ) -> Result<SetPermissionResponseProto> {
-        self.conn.call(Cow::Borrowed("setPermission"), args)
+        self.conn.call("setPermission".into(), args)
     }
 
     #[allow(non_snake_case)]
     pub fn setOwner(&mut self, args: &SetOwnerRequestProto) -> Result<SetOwnerResponseProto> {
-        self.conn.call(Cow::Borrowed("setOwner"), args)
+        self.conn.call("setOwner".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -142,12 +141,12 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &AbandonBlockRequestProto,
     ) -> Result<AbandonBlockResponseProto> {
-        self.conn.call(Cow::Borrowed("abandonBlock"), args)
+        self.conn.call("abandonBlock".into(), args)
     }
 
     #[allow(non_snake_case)]
     pub fn addBlock(&mut self, args: &AddBlockRequestProto) -> Result<AddBlockResponseProto> {
-        self.conn.call(Cow::Borrowed("addBlock"), args)
+        self.conn.call("addBlock".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -155,12 +154,12 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &GetAdditionalDatanodeRequestProto,
     ) -> Result<GetAdditionalDatanodeResponseProto> {
-        self.conn.call(Cow::Borrowed("getAdditionalDatanode"), args)
+        self.conn.call("getAdditionalDatanode".into(), args)
     }
 
     #[allow(non_snake_case)]
     pub fn complete(&mut self, args: &CompleteRequestProto) -> Result<CompleteResponseProto> {
-        self.conn.call(Cow::Borrowed("complete"), args)
+        self.conn.call("complete".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -168,17 +167,17 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &ReportBadBlocksRequestProto,
     ) -> Result<ReportBadBlocksResponseProto> {
-        self.conn.call(Cow::Borrowed("reportBadBlocks"), args)
+        self.conn.call("reportBadBlocks".into(), args)
     }
 
     #[allow(non_snake_case)]
     pub fn concat(&mut self, args: &ConcatRequestProto) -> Result<ConcatResponseProto> {
-        self.conn.call(Cow::Borrowed("concat"), args)
+        self.conn.call("concat".into(), args)
     }
 
     #[allow(non_snake_case)]
     pub fn truncate(&mut self, args: &TruncateRequestProto) -> Result<TruncateResponseProto> {
-        self.conn.call(Cow::Borrowed("truncate"), args)
+        self.conn.call("truncate".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -187,27 +186,27 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         args.set_src(src);
         args.set_dst(dst);
 
-        self.conn.call(Cow::Borrowed("rename"), &args)
+        self.conn.call("rename".into(), &args)
     }
 
     #[allow(non_snake_case)]
     pub fn rename2(&mut self, args: &Rename2RequestProto) -> Result<Rename2ResponseProto> {
-        self.conn.call(Cow::Borrowed("rename2"), args)
+        self.conn.call("rename2".into(), args)
     }
 
     #[allow(non_snake_case)]
     pub fn delete(&mut self, args: &DeleteRequestProto) -> Result<DeleteResponseProto> {
-        self.conn.call(Cow::Borrowed("delete"), args)
+        self.conn.call("delete".into(), args)
     }
 
     #[allow(non_snake_case)]
     pub fn mkdirs(&mut self, args: &MkdirsRequestProto) -> Result<MkdirsResponseProto> {
-        self.conn.call(Cow::Borrowed("mkdirs"), args)
+        self.conn.call("mkdirs".into(), args)
     }
 
     // #[allow(non_snake_case)]
     // pub fn getListing(&mut self, args: &GetListingRequestProto) -> Result<GetListingResponseProto> {
-    //     self.conn.call(Cow::Borrowed("getListing"), args)
+    //     self.conn.call("getListing".into(), args)
     // }
 
     #[allow(non_snake_case)]
@@ -215,12 +214,12 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &GetBatchedListingRequestProto,
     ) -> Result<GetBatchedListingResponseProto> {
-        self.conn.call(Cow::Borrowed("getBatchedListing"), args)
+        self.conn.call("getBatchedListing".into(), args)
     }
 
     #[allow(non_snake_case)]
     pub fn renewLease(&mut self, args: &RenewLeaseRequestProto) -> Result<RenewLeaseResponseProto> {
-        self.conn.call(Cow::Borrowed("renewLease"), args)
+        self.conn.call("renewLease".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -228,7 +227,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &RecoverLeaseRequestProto,
     ) -> Result<RecoverLeaseResponseProto> {
-        self.conn.call(Cow::Borrowed("recoverLease"), args)
+        self.conn.call("recoverLease".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -236,7 +235,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &GetFsStatusRequestProto,
     ) -> Result<GetFsStatsResponseProto> {
-        self.conn.call(Cow::Borrowed("getFsStats"), args)
+        self.conn.call("getFsStats".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -245,7 +244,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         args: &GetFsReplicatedBlockStatsRequestProto,
     ) -> Result<GetFsReplicatedBlockStatsResponseProto> {
         self.conn
-            .call(Cow::Borrowed("getFsReplicatedBlockStats"), args)
+            .call("getFsReplicatedBlockStats".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -254,7 +253,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         args: &GetFsECBlockGroupStatsRequestProto,
     ) -> Result<GetFsECBlockGroupStatsResponseProto> {
         self.conn
-            .call(Cow::Borrowed("getFsECBlockGroupStats"), args)
+            .call("getFsECBlockGroupStats".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -262,7 +261,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &GetDatanodeReportRequestProto,
     ) -> Result<GetDatanodeReportResponseProto> {
-        self.conn.call(Cow::Borrowed("getDatanodeReport"), args)
+        self.conn.call("getDatanodeReport".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -271,7 +270,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         args: &GetDatanodeStorageReportRequestProto,
     ) -> Result<GetDatanodeStorageReportResponseProto> {
         self.conn
-            .call(Cow::Borrowed("getDatanodeStorageReport"), args)
+            .call("getDatanodeStorageReport".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -279,7 +278,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &GetPreferredBlockSizeRequestProto,
     ) -> Result<GetPreferredBlockSizeResponseProto> {
-        self.conn.call(Cow::Borrowed("getPreferredBlockSize"), args)
+        self.conn.call("getPreferredBlockSize".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -287,7 +286,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &SetSafeModeRequestProto,
     ) -> Result<SetSafeModeResponseProto> {
-        self.conn.call(Cow::Borrowed("setSafeMode"), args)
+        self.conn.call("setSafeMode".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -295,12 +294,12 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &SaveNamespaceRequestProto,
     ) -> Result<SaveNamespaceResponseProto> {
-        self.conn.call(Cow::Borrowed("saveNamespace"), args)
+        self.conn.call("saveNamespace".into(), args)
     }
 
     #[allow(non_snake_case)]
     pub fn rollEdits(&mut self, args: &RollEditsRequestProto) -> Result<RollEditsResponseProto> {
-        self.conn.call(Cow::Borrowed("rollEdits"), args)
+        self.conn.call("rollEdits".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -308,7 +307,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &RestoreFailedStorageRequestProto,
     ) -> Result<RestoreFailedStorageResponseProto> {
-        self.conn.call(Cow::Borrowed("restoreFailedStorage"), args)
+        self.conn.call("restoreFailedStorage".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -316,7 +315,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &RefreshNodesRequestProto,
     ) -> Result<RefreshNodesResponseProto> {
-        self.conn.call(Cow::Borrowed("refreshNodes"), args)
+        self.conn.call("refreshNodes".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -324,7 +323,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &FinalizeUpgradeRequestProto,
     ) -> Result<FinalizeUpgradeResponseProto> {
-        self.conn.call(Cow::Borrowed("finalizeUpgrade"), args)
+        self.conn.call("finalizeUpgrade".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -332,7 +331,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &UpgradeStatusRequestProto,
     ) -> Result<UpgradeStatusResponseProto> {
-        self.conn.call(Cow::Borrowed("upgradeStatus"), args)
+        self.conn.call("upgradeStatus".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -340,7 +339,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &RollingUpgradeRequestProto,
     ) -> Result<RollingUpgradeResponseProto> {
-        self.conn.call(Cow::Borrowed("rollingUpgrade"), args)
+        self.conn.call("rollingUpgrade".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -348,12 +347,12 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &ListCorruptFileBlocksRequestProto,
     ) -> Result<ListCorruptFileBlocksResponseProto> {
-        self.conn.call(Cow::Borrowed("listCorruptFileBlocks"), args)
+        self.conn.call("listCorruptFileBlocks".into(), args)
     }
 
     #[allow(non_snake_case)]
     pub fn metaSave(&mut self, args: &MetaSaveRequestProto) -> Result<MetaSaveResponseProto> {
-        self.conn.call(Cow::Borrowed("metaSave"), args)
+        self.conn.call("metaSave".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -361,7 +360,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         let mut args = GetFileInfoRequestProto::new();
         args.set_src(src);
         let mut res: GetFileInfoResponseProto =
-            self.conn.call(Cow::Borrowed("getFileInfo"), &args)?;
+            self.conn.call("getFileInfo".into(), &args)?;
         Ok(if res.has_fs() {
             Some(res.take_fs())
         } else {
@@ -374,7 +373,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &GetLocatedFileInfoRequestProto,
     ) -> Result<GetLocatedFileInfoResponseProto> {
-        self.conn.call(Cow::Borrowed("getLocatedFileInfo"), args)
+        self.conn.call("getLocatedFileInfo".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -382,7 +381,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &AddCacheDirectiveRequestProto,
     ) -> Result<AddCacheDirectiveResponseProto> {
-        self.conn.call(Cow::Borrowed("addCacheDirective"), args)
+        self.conn.call("addCacheDirective".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -390,7 +389,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &ModifyCacheDirectiveRequestProto,
     ) -> Result<ModifyCacheDirectiveResponseProto> {
-        self.conn.call(Cow::Borrowed("modifyCacheDirective"), args)
+        self.conn.call("modifyCacheDirective".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -398,7 +397,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &RemoveCacheDirectiveRequestProto,
     ) -> Result<RemoveCacheDirectiveResponseProto> {
-        self.conn.call(Cow::Borrowed("removeCacheDirective"), args)
+        self.conn.call("removeCacheDirective".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -406,7 +405,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &ListCacheDirectivesRequestProto,
     ) -> Result<ListCacheDirectivesResponseProto> {
-        self.conn.call(Cow::Borrowed("listCacheDirectives"), args)
+        self.conn.call("listCacheDirectives".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -414,7 +413,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &AddCachePoolRequestProto,
     ) -> Result<AddCachePoolResponseProto> {
-        self.conn.call(Cow::Borrowed("addCachePool"), args)
+        self.conn.call("addCachePool".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -422,7 +421,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &ModifyCachePoolRequestProto,
     ) -> Result<ModifyCachePoolResponseProto> {
-        self.conn.call(Cow::Borrowed("modifyCachePool"), args)
+        self.conn.call("modifyCachePool".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -430,7 +429,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &RemoveCachePoolRequestProto,
     ) -> Result<RemoveCachePoolResponseProto> {
-        self.conn.call(Cow::Borrowed("removeCachePool"), args)
+        self.conn.call("removeCachePool".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -438,7 +437,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &ListCachePoolsRequestProto,
     ) -> Result<ListCachePoolsResponseProto> {
-        self.conn.call(Cow::Borrowed("listCachePools"), args)
+        self.conn.call("listCachePools".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -446,7 +445,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &GetFileLinkInfoRequestProto,
     ) -> Result<GetFileLinkInfoResponseProto> {
-        self.conn.call(Cow::Borrowed("getFileLinkInfo"), args)
+        self.conn.call("getFileLinkInfo".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -454,22 +453,22 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &GetContentSummaryRequestProto,
     ) -> Result<GetContentSummaryResponseProto> {
-        self.conn.call(Cow::Borrowed("getContentSummary"), args)
+        self.conn.call("getContentSummary".into(), args)
     }
 
     #[allow(non_snake_case)]
     pub fn setQuota(&mut self, args: &SetQuotaRequestProto) -> Result<SetQuotaResponseProto> {
-        self.conn.call(Cow::Borrowed("setQuota"), args)
+        self.conn.call("setQuota".into(), args)
     }
 
     #[allow(non_snake_case)]
     pub fn fsync(&mut self, args: &FsyncRequestProto) -> Result<FsyncResponseProto> {
-        self.conn.call(Cow::Borrowed("fsync"), args)
+        self.conn.call("fsync".into(), args)
     }
 
     #[allow(non_snake_case)]
     pub fn setTimes(&mut self, args: &SetTimesRequestProto) -> Result<SetTimesResponseProto> {
-        self.conn.call(Cow::Borrowed("setTimes"), args)
+        self.conn.call("setTimes".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -477,7 +476,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &CreateSymlinkRequestProto,
     ) -> Result<CreateSymlinkResponseProto> {
-        self.conn.call(Cow::Borrowed("createSymlink"), args)
+        self.conn.call("createSymlink".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -485,7 +484,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &GetLinkTargetRequestProto,
     ) -> Result<GetLinkTargetResponseProto> {
-        self.conn.call(Cow::Borrowed("getLinkTarget"), args)
+        self.conn.call("getLinkTarget".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -494,7 +493,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         args: &UpdateBlockForPipelineRequestProto,
     ) -> Result<UpdateBlockForPipelineResponseProto> {
         self.conn
-            .call(Cow::Borrowed("updateBlockForPipeline"), args)
+            .call("updateBlockForPipeline".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -502,7 +501,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &UpdatePipelineRequestProto,
     ) -> Result<UpdatePipelineResponseProto> {
-        self.conn.call(Cow::Borrowed("updatePipeline"), args)
+        self.conn.call("updatePipeline".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -510,7 +509,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &GetDelegationTokenRequestProto,
     ) -> Result<GetDelegationTokenResponseProto> {
-        self.conn.call(Cow::Borrowed("getDelegationToken"), args)
+        self.conn.call("getDelegationToken".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -518,7 +517,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &RenewDelegationTokenRequestProto,
     ) -> Result<RenewDelegationTokenResponseProto> {
-        self.conn.call(Cow::Borrowed("renewDelegationToken"), args)
+        self.conn.call("renewDelegationToken".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -526,7 +525,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &CancelDelegationTokenRequestProto,
     ) -> Result<CancelDelegationTokenResponseProto> {
-        self.conn.call(Cow::Borrowed("cancelDelegationToken"), args)
+        self.conn.call("cancelDelegationToken".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -534,7 +533,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &SetBalancerBandwidthRequestProto,
     ) -> Result<SetBalancerBandwidthResponseProto> {
-        self.conn.call(Cow::Borrowed("setBalancerBandwidth"), args)
+        self.conn.call("setBalancerBandwidth".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -542,7 +541,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &GetDataEncryptionKeyRequestProto,
     ) -> Result<GetDataEncryptionKeyResponseProto> {
-        self.conn.call(Cow::Borrowed("getDataEncryptionKey"), args)
+        self.conn.call("getDataEncryptionKey".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -550,7 +549,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &CreateSnapshotRequestProto,
     ) -> Result<CreateSnapshotResponseProto> {
-        self.conn.call(Cow::Borrowed("createSnapshot"), args)
+        self.conn.call("createSnapshot".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -558,7 +557,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &RenameSnapshotRequestProto,
     ) -> Result<RenameSnapshotResponseProto> {
-        self.conn.call(Cow::Borrowed("renameSnapshot"), args)
+        self.conn.call("renameSnapshot".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -566,7 +565,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &AllowSnapshotRequestProto,
     ) -> Result<AllowSnapshotResponseProto> {
-        self.conn.call(Cow::Borrowed("allowSnapshot"), args)
+        self.conn.call("allowSnapshot".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -574,7 +573,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &DisallowSnapshotRequestProto,
     ) -> Result<DisallowSnapshotResponseProto> {
-        self.conn.call(Cow::Borrowed("disallowSnapshot"), args)
+        self.conn.call("disallowSnapshot".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -583,7 +582,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         args: &GetSnapshottableDirListingRequestProto,
     ) -> Result<GetSnapshottableDirListingResponseProto> {
         self.conn
-            .call(Cow::Borrowed("getSnapshottableDirListing"), args)
+            .call("getSnapshottableDirListing".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -591,7 +590,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &GetSnapshotListingRequestProto,
     ) -> Result<GetSnapshotListingResponseProto> {
-        self.conn.call(Cow::Borrowed("getSnapshotListing"), args)
+        self.conn.call("getSnapshotListing".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -599,7 +598,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &DeleteSnapshotRequestProto,
     ) -> Result<DeleteSnapshotResponseProto> {
-        self.conn.call(Cow::Borrowed("deleteSnapshot"), args)
+        self.conn.call("deleteSnapshot".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -607,7 +606,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &GetSnapshotDiffReportRequestProto,
     ) -> Result<GetSnapshotDiffReportResponseProto> {
-        self.conn.call(Cow::Borrowed("getSnapshotDiffReport"), args)
+        self.conn.call("getSnapshotDiffReport".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -616,7 +615,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         args: &GetSnapshotDiffReportListingRequestProto,
     ) -> Result<GetSnapshotDiffReportListingResponseProto> {
         self.conn
-            .call(Cow::Borrowed("getSnapshotDiffReportListing"), args)
+            .call("getSnapshotDiffReportListing".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -624,7 +623,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &IsFileClosedRequestProto,
     ) -> Result<IsFileClosedResponseProto> {
-        self.conn.call(Cow::Borrowed("isFileClosed"), args)
+        self.conn.call("isFileClosed".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -632,7 +631,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &ModifyAclEntriesRequestProto,
     ) -> Result<ModifyAclEntriesResponseProto> {
-        self.conn.call(Cow::Borrowed("modifyAclEntries"), args)
+        self.conn.call("modifyAclEntries".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -640,7 +639,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &RemoveAclEntriesRequestProto,
     ) -> Result<RemoveAclEntriesResponseProto> {
-        self.conn.call(Cow::Borrowed("removeAclEntries"), args)
+        self.conn.call("removeAclEntries".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -648,17 +647,17 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &RemoveDefaultAclRequestProto,
     ) -> Result<RemoveDefaultAclResponseProto> {
-        self.conn.call(Cow::Borrowed("removeDefaultAcl"), args)
+        self.conn.call("removeDefaultAcl".into(), args)
     }
 
     #[allow(non_snake_case)]
     pub fn removeAcl(&mut self, args: &RemoveAclRequestProto) -> Result<RemoveAclResponseProto> {
-        self.conn.call(Cow::Borrowed("removeAcl"), args)
+        self.conn.call("removeAcl".into(), args)
     }
 
     #[allow(non_snake_case)]
     pub fn setAcl(&mut self, args: &SetAclRequestProto) -> Result<SetAclResponseProto> {
-        self.conn.call(Cow::Borrowed("setAcl"), args)
+        self.conn.call("setAcl".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -666,22 +665,22 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &GetAclStatusRequestProto,
     ) -> Result<GetAclStatusResponseProto> {
-        self.conn.call(Cow::Borrowed("getAclStatus"), args)
+        self.conn.call("getAclStatus".into(), args)
     }
 
     #[allow(non_snake_case)]
     pub fn setXAttr(&mut self, args: &SetXAttrRequestProto) -> Result<SetXAttrResponseProto> {
-        self.conn.call(Cow::Borrowed("setXAttr"), args)
+        self.conn.call("setXAttr".into(), args)
     }
 
     #[allow(non_snake_case)]
     pub fn getXAttrs(&mut self, args: &GetXAttrsRequestProto) -> Result<GetXAttrsResponseProto> {
-        self.conn.call(Cow::Borrowed("getXAttrs"), args)
+        self.conn.call("getXAttrs".into(), args)
     }
 
     #[allow(non_snake_case)]
     pub fn listXAttrs(&mut self, args: &ListXAttrsRequestProto) -> Result<ListXAttrsResponseProto> {
-        self.conn.call(Cow::Borrowed("listXAttrs"), args)
+        self.conn.call("listXAttrs".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -689,7 +688,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &RemoveXAttrRequestProto,
     ) -> Result<RemoveXAttrResponseProto> {
-        self.conn.call(Cow::Borrowed("removeXAttr"), args)
+        self.conn.call("removeXAttr".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -697,7 +696,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &CheckAccessRequestProto,
     ) -> Result<CheckAccessResponseProto> {
-        self.conn.call(Cow::Borrowed("checkAccess"), args)
+        self.conn.call("checkAccess".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -705,7 +704,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &CreateEncryptionZoneRequestProto,
     ) -> Result<CreateEncryptionZoneResponseProto> {
-        self.conn.call(Cow::Borrowed("createEncryptionZone"), args)
+        self.conn.call("createEncryptionZone".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -713,7 +712,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &ListEncryptionZonesRequestProto,
     ) -> Result<ListEncryptionZonesResponseProto> {
-        self.conn.call(Cow::Borrowed("listEncryptionZones"), args)
+        self.conn.call("listEncryptionZones".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -722,7 +721,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         args: &ReencryptEncryptionZoneRequestProto,
     ) -> Result<ReencryptEncryptionZoneResponseProto> {
         self.conn
-            .call(Cow::Borrowed("reencryptEncryptionZone"), args)
+            .call("reencryptEncryptionZone".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -731,7 +730,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         args: &ListReencryptionStatusRequestProto,
     ) -> Result<ListReencryptionStatusResponseProto> {
         self.conn
-            .call(Cow::Borrowed("listReencryptionStatus"), args)
+            .call("listReencryptionStatus".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -739,7 +738,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &GetEZForPathRequestProto,
     ) -> Result<GetEZForPathResponseProto> {
-        self.conn.call(Cow::Borrowed("getEZForPath"), args)
+        self.conn.call("getEZForPath".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -748,7 +747,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         args: &SetErasureCodingPolicyRequestProto,
     ) -> Result<SetErasureCodingPolicyResponseProto> {
         self.conn
-            .call(Cow::Borrowed("setErasureCodingPolicy"), args)
+            .call("setErasureCodingPolicy".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -757,7 +756,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         args: &UnsetErasureCodingPolicyRequestProto,
     ) -> Result<UnsetErasureCodingPolicyResponseProto> {
         self.conn
-            .call(Cow::Borrowed("unsetErasureCodingPolicy"), args)
+            .call("unsetErasureCodingPolicy".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -766,7 +765,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         args: &GetECTopologyResultForPoliciesRequestProto,
     ) -> Result<GetECTopologyResultForPoliciesResponseProto> {
         self.conn
-            .call(Cow::Borrowed("getECTopologyResultForPolicies"), args)
+            .call("getECTopologyResultForPolicies".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -774,7 +773,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &GetCurrentEditLogTxidRequestProto,
     ) -> Result<GetCurrentEditLogTxidResponseProto> {
-        self.conn.call(Cow::Borrowed("getCurrentEditLogTxid"), args)
+        self.conn.call("getCurrentEditLogTxid".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -782,7 +781,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &GetEditsFromTxidRequestProto,
     ) -> Result<GetEditsFromTxidResponseProto> {
-        self.conn.call(Cow::Borrowed("getEditsFromTxid"), args)
+        self.conn.call("getEditsFromTxid".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -791,7 +790,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         args: &GetErasureCodingPoliciesRequestProto,
     ) -> Result<GetErasureCodingPoliciesResponseProto> {
         self.conn
-            .call(Cow::Borrowed("getErasureCodingPolicies"), args)
+            .call("getErasureCodingPolicies".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -800,7 +799,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         args: &AddErasureCodingPoliciesRequestProto,
     ) -> Result<AddErasureCodingPoliciesResponseProto> {
         self.conn
-            .call(Cow::Borrowed("addErasureCodingPolicies"), args)
+            .call("addErasureCodingPolicies".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -809,7 +808,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         args: &RemoveErasureCodingPolicyRequestProto,
     ) -> Result<RemoveErasureCodingPolicyResponseProto> {
         self.conn
-            .call(Cow::Borrowed("removeErasureCodingPolicy"), args)
+            .call("removeErasureCodingPolicy".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -818,7 +817,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         args: &EnableErasureCodingPolicyRequestProto,
     ) -> Result<EnableErasureCodingPolicyResponseProto> {
         self.conn
-            .call(Cow::Borrowed("enableErasureCodingPolicy"), args)
+            .call("enableErasureCodingPolicy".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -827,7 +826,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         args: &DisableErasureCodingPolicyRequestProto,
     ) -> Result<DisableErasureCodingPolicyResponseProto> {
         self.conn
-            .call(Cow::Borrowed("disableErasureCodingPolicy"), args)
+            .call("disableErasureCodingPolicy".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -836,7 +835,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         args: &GetErasureCodingPolicyRequestProto,
     ) -> Result<GetErasureCodingPolicyResponseProto> {
         self.conn
-            .call(Cow::Borrowed("getErasureCodingPolicy"), args)
+            .call("getErasureCodingPolicy".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -845,7 +844,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         args: &GetErasureCodingCodecsRequestProto,
     ) -> Result<GetErasureCodingCodecsResponseProto> {
         self.conn
-            .call(Cow::Borrowed("getErasureCodingCodecs"), args)
+            .call("getErasureCodingCodecs".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -853,19 +852,19 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &GetQuotaUsageRequestProto,
     ) -> Result<GetQuotaUsageResponseProto> {
-        self.conn.call(Cow::Borrowed("getQuotaUsage"), args)
+        self.conn.call("getQuotaUsage".into(), args)
     }
     #[allow(non_snake_case)]
     pub fn listOpenFiles(
         &mut self,
         args: &ListOpenFilesRequestProto,
     ) -> Result<ListOpenFilesResponseProto> {
-        self.conn.call(Cow::Borrowed("listOpenFiles"), args)
+        self.conn.call("listOpenFiles".into(), args)
     }
 
     #[allow(non_snake_case)]
     pub fn msync(&mut self, args: &MsyncRequestProto) -> Result<MsyncResponseProto> {
-        self.conn.call(Cow::Borrowed("msync"), args)
+        self.conn.call("msync".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -873,7 +872,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &SatisfyStoragePolicyRequestProto,
     ) -> Result<SatisfyStoragePolicyResponseProto> {
-        self.conn.call(Cow::Borrowed("satisfyStoragePolicy"), args)
+        self.conn.call("satisfyStoragePolicy".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -881,7 +880,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &HAServiceStateRequestProto,
     ) -> Result<HAServiceStateResponseProto> {
-        self.conn.call(Cow::Borrowed("getServiceState"), args)
+        self.conn.call("getServiceState".into(), args)
     }
 
     #[inline]
