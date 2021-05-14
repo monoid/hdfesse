@@ -589,9 +589,43 @@ pub extern "C" fn hdfsSetWorkingDirectory(_fs: hdfsFS, _path: *const c_char) -> 
     unimplemented!()
 }
 
+/**
+
+Create directories recursively.  Returns 0 in case of success (if
+directory already exists, it is success), or -1 in case of errors.
+
+# Safety
+
+fs value should be a value constructed with hdfs*Connect* family of
+functions, and path is a null-terminated C string.
+
+*/
 #[no_mangle]
-pub extern "C" fn hdfsCreateDirectory(_fs: hdfsFS, _path: *const c_char) -> c_int {
-    unimplemented!()
+pub unsafe extern "C" fn hdfsCreateDirectory(fs: hdfsFS, path: *const c_char) -> c_int {
+    let fs = expect_mut!(fs);
+    let path = CStr::from_ptr(path).to_str();
+
+    let path = match path.map_err(PathError::Utf8).and_then(Path::new) {
+        Ok(path) => path,
+        Err(_) => {
+            *libc::__errno_location() = libc::EINVAL;
+            return -1;
+        }
+    };
+
+    match fs.mkdirs(&path, true) {
+        Ok(true) => 0,
+        Ok(false) => {
+            // Actually, mkdirs's success value is *always* true.  We
+            // repeat hdfs.c's code that handles this case anyway.
+            *libc::__errno_location() = libc::EIO;
+            -1
+        }
+        Err(e) => {
+            errors::set_errno_with_hadoop_error(e);
+            -1
+        }
+    }
 }
 
 #[no_mangle]

@@ -192,7 +192,7 @@ impl<R: RpcConnection> Hdfs<R> {
     }
 
     // Almost functional implementation, requires some polishing.
-    pub fn mkdirs(&mut self, src: &Path, create_parent: bool) -> Result<(), HdfsError> {
+    pub fn mkdirs(&mut self, src: &Path, create_parent: bool) -> Result<bool, HdfsError> {
         let src_res = self.resolve.resolve_path(src).map_err(HdfsError::src)?;
 
         if !create_parent {
@@ -214,7 +214,7 @@ impl<R: RpcConnection> Hdfs<R> {
             .mkdirs(&args)
             .map_err(FsError::Rpc)
             .map_err(HdfsError::op)
-            .map(|_| ())
+            .map(|resp| resp.get_result())
     }
 
     /// Delete path

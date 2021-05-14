@@ -48,7 +48,7 @@ impl<'a> Mkdir<'a> {
         Self { hdfs }
     }
 
-    fn mkdir(&mut self, path_str: &str, parents: bool) -> Result<()> {
+    fn mkdir(&mut self, path_str: &str, parents: bool) -> Result<bool> {
         // TODO resolving
         let path = Path::new(path_str).map_err(MkdirError::Uri)?;
 
