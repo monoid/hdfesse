@@ -218,8 +218,13 @@ impl<'a> Command for Ls<'a> {
     type Args = LsArgs;
     type Error = LsError;
 
-    fn run(&mut self, args: Self::Args) -> Result<i32, Self::Error> {
+    fn run(&mut self, mut args: Self::Args) -> Result<i32, Self::Error> {
         let mut has_err = false;
+
+        if args.paths.is_empty() {
+            args.paths.push(".".into());
+        }
+
         for path in args.paths {
             if let Err(e) = self.list_dir(&path, &args.opts) {
                 if let LsError::LocalIo(ioe) = &e {
