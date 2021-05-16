@@ -25,7 +25,7 @@ use crate::{
 use hdfesse_proto::{
     acl::FsPermissionProto,
     hdfs::{HdfsFileStatusProto, HdfsFileStatusProto_FileType},
-    ClientNamenodeProtocol::{DeleteRequestProto, MkdirsRequestProto},
+    ClientNamenodeProtocol::{DeleteRequestProto, MkdirsRequestProto, SetTimesRequestProto},
 };
 use thiserror::Error;
 
@@ -235,6 +235,31 @@ impl<R: RpcConnection> Hdfs<R> {
             .map_err(FsError::Rpc)
             .map_err(HdfsError::src)
             .map(|resp| resp.get_result())
+    }
+
+    pub fn set_time(
+        &mut self,
+        path: &Path,
+        mtime: Option<u64>,
+        atime: Option<u64>,
+    ) -> Result<(), HdfsError> {
+        let path_res = self.resolve.resolve_path(path).map_err(HdfsError::src)?;
+
+        let mut args = SetTimesRequestProto::default();
+        args.set_src(path_res.to_path_string());
+        if let Some(mtime) = mtime {
+            // Convert to milliseconds; see hdfs.c.
+            args.set_mtime(mtime * 1000);
+        }
+        if let Some(atime) = atime {
+            args.set_atime(atime * 1000);
+        }
+
+        self.service
+            .setTimes(&args)
+            .map_err(FsError::Rpc)
+            .map_err(HdfsError::src)?;
+        Ok(())
     }
 
     #[inline]
