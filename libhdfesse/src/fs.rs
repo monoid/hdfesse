@@ -25,7 +25,9 @@ use crate::{
 use hdfesse_proto::{
     acl::FsPermissionProto,
     hdfs::{HdfsFileStatusProto, HdfsFileStatusProto_FileType},
-    ClientNamenodeProtocol::{DeleteRequestProto, MkdirsRequestProto, SetTimesRequestProto},
+    ClientNamenodeProtocol::{
+        DeleteRequestProto, MkdirsRequestProto, SetPermissionRequestProto, SetTimesRequestProto,
+    },
 };
 use thiserror::Error;
 
@@ -235,6 +237,23 @@ impl<R: RpcConnection> Hdfs<R> {
             .map_err(FsError::Rpc)
             .map_err(HdfsError::src)
             .map(|resp| resp.get_result())
+    }
+
+    pub fn chmod(&mut self, path: &Path, chmod: u32) -> Result<(), HdfsError> {
+        let path_res = self.resolve.resolve_path(path).map_err(HdfsError::src)?;
+
+        let mut perm = FsPermissionProto::default();
+        perm.set_perm(chmod);
+
+        let mut args = SetPermissionRequestProto::default();
+        args.set_src(path_res.to_path_string());
+        args.set_permission(perm);
+
+        self.service
+            .setPermission(&args)
+            .map_err(FsError::Rpc)
+            .map_err(HdfsError::src)?;
+        Ok(())
     }
 
     pub fn set_time(

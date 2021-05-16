@@ -932,9 +932,40 @@ pub extern "C" fn hdfsChown(
     unimplemented!()
 }
 
+/**
+
+hdfsChmod
+@param fs The configured filesystem handle.
+@param path the path to the file or directory
+@param mode the bitmask to set it to
+@return 0 on success else -1
+
+# Safety
+
+fs value should be a value constructed with hdfs*Connect* family of
+functions, and path is a null-terminated C string.
+
+ */
 #[no_mangle]
-pub extern "C" fn hdfsChmod(_fs: hdfsFS, _path: *const c_char, _mode: c_short) -> c_int {
-    unimplemented!()
+pub unsafe extern "C" fn hdfsChmod(fs: hdfsFS, path: *const c_char, mode: c_short) -> c_int {
+    let fs = expect_mut!(fs);
+    let path = CStr::from_ptr(path).to_str();
+
+    let path = match path.map_err(PathError::Utf8).and_then(Path::new) {
+        Ok(path) => path,
+        Err(_) => {
+            *libc::__errno_location() = libc::EINVAL;
+            return -1;
+        }
+    };
+
+    match fs.chmod(&path, mode as _) {
+        Ok(()) => 0,
+        Err(e) => {
+            errors::set_errno_with_hadoop_error(e);
+            -1
+        }
+    }
 }
 
 const NO_TIME: i64 = -1;
@@ -948,12 +979,13 @@ fn time_to_option(time: i64) -> Option<u64> {
 }
 
 /**
- hdfsUtime
- @param fs The configured filesystem handle.
- @param path the path to the file or directory
- @param mtime new modification time or -1 for no change
- @param atime new access time or -1 for no change
- @return 0 on success else -1
+
+hdfsUtime
+@param fs The configured filesystem handle.
+@param path the path to the file or directory
+@param mtime new modification time or -1 for no change
+@param atime new access time or -1 for no change
+@return 0 on success else -1
 
 # Safety
 
