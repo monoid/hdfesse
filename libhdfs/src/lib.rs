@@ -912,14 +912,52 @@ pub extern "C" fn hdfsGetDefaultBlockSizeAtPath(_fs: hdfsFS, _path: *const c_cha
     unimplemented!()
 }
 
+/**
+
+hdfsGetCapacity - Return the raw capacity of the filesystem.
+@param fs The configured filesystem handle.
+@return Returns the raw-capacity; -1 on error.
+
+# Safety
+
+fs value should be a value constructed with hdfs*Connect* family of
+functions.
+
+ */
 #[no_mangle]
-pub extern "C" fn hdfsGetCapacity(_fs: hdfsFS) -> tOffset {
-    unimplemented!()
+pub unsafe extern "C" fn hdfsGetCapacity(fs: hdfsFS) -> tOffset {
+    let fs = expect_mut!(fs);
+    match fs.get_status() {
+        Ok(stats) => stats.capacity as _,
+        Err(e) => {
+            errors::set_errno_with_hadoop_error(e);
+            -1
+        }
+    }
 }
 
+/**
+
+hdfsGetUsed - Return the total raw size of all files in the filesystem.
+@param fs The configured filesystem handle.
+@return Returns the total-size; -1 on error.
+
+# Safety
+
+fs value should be a value constructed with hdfs*Connect* family of
+functions.
+
+ */
 #[no_mangle]
-pub extern "C" fn hdfsGetUsed(_fs: hdfsFS) -> tOffset {
-    unimplemented!()
+pub unsafe extern "C" fn hdfsGetUsed(fs: hdfsFS) -> tOffset {
+    let fs = expect_mut!(fs);
+    match fs.get_status() {
+        Ok(stats) => stats.used as _,
+        Err(e) => {
+            errors::set_errno_with_hadoop_error(e);
+            -1
+        }
+    }
 }
 
 #[no_mangle]

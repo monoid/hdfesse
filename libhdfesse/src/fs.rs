@@ -26,7 +26,8 @@ use hdfesse_proto::{
     acl::FsPermissionProto,
     hdfs::{HdfsFileStatusProto, HdfsFileStatusProto_FileType},
     ClientNamenodeProtocol::{
-        DeleteRequestProto, MkdirsRequestProto, SetPermissionRequestProto, SetTimesRequestProto,
+        DeleteRequestProto, GetFsStatusRequestProto, MkdirsRequestProto, SetPermissionRequestProto,
+        SetTimesRequestProto,
     },
 };
 use thiserror::Error;
@@ -139,6 +140,18 @@ pub fn ensure_not_exists(
     }
 }
 
+pub struct FsStatus {
+    pub capacity: u64,
+    pub used: u64,
+    pub remaining: u64,
+    pub under_replicated: u64,
+    pub corrupt_blocks: u64,
+    pub missing_blocks: u64,
+    pub missing_repl_one_blocks: u64,
+    pub blocks_in_future: u64,
+    pub pending_deletion_blocks: u64,
+}
+
 pub struct Hdfs<R: RpcConnection = crate::ha_rpc::HaHdfsConnection<crate::rpc::SimpleConnector>> {
     service: service::ClientNamenodeService<R>,
     resolve: UriResolver,
@@ -237,6 +250,24 @@ impl<R: RpcConnection> Hdfs<R> {
             .map_err(FsError::Rpc)
             .map_err(HdfsError::src)
             .map(|resp| resp.get_result())
+    }
+
+    pub fn get_status(&mut self) -> Result<FsStatus, HdfsError> {
+        let args = GetFsStatusRequestProto::default();
+        match self.service.getFsStats(&args) {
+            Ok(stats) => Ok(FsStatus {
+                capacity: stats.get_capacity(),
+                used: stats.get_used(),
+                remaining: stats.get_used(),
+                under_replicated: stats.get_under_replicated(),
+                corrupt_blocks: stats.get_corrupt_blocks(),
+                missing_blocks: stats.get_missing_blocks(),
+                missing_repl_one_blocks: stats.get_missing_repl_one_blocks(),
+                blocks_in_future: stats.get_blocks_in_future(),
+                pending_deletion_blocks: stats.get_pending_deletion_blocks(),
+            }),
+            Err(e) => Err(HdfsError::op(FsError::Rpc(e))),
+        }
     }
 
     pub fn chmod(&mut self, path: &Path, chmod: u32) -> Result<(), HdfsError> {
