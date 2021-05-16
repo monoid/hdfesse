@@ -23,7 +23,7 @@ pub struct RmArgs {
     #[structopt(short = "r", help = "Remove directories recursively")]
     recursive: bool,
     #[structopt(name = "src", required = true)]
-    src: String,
+    srcs: Vec<String>,
 }
 
 pub struct Rm<'a> {
@@ -41,6 +41,15 @@ impl<'a> Command for Rm<'a> {
     type Error = anyhow::Error;
 
     fn run(&mut self, args: Self::Args) -> Result<i32> {
-        Ok((!self.hdfs.delete(&Path::new(&args.src)?, args.recursive)?) as _)
+        let mut has_error = false;
+
+        for src in args.srcs {
+            if let Err(e) = self.hdfs.delete(&Path::new(&src)?, args.recursive) {
+                has_error = true;
+                eprintln!("{}", e);
+            }
+        }
+
+        Ok(has_error as _)
     }
 }
