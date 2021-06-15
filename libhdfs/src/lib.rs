@@ -888,13 +888,79 @@ pub unsafe extern "C" fn hdfsFileIsEncrypted(hdfsFileInfo: *const hdfsFileInfo) 
     (flag != 0) as _
 }
 
+/**
+ hdfsGetHosts - Get hostnames where a particular block (determined by
+ pos & blocksize) of a file is stored. The last element in the array
+ is NULL. Due to replication, a single block could be present on
+ multiple hosts.
+ @param fs The configured filesystem handle.
+ @param path The path of the file.
+ @param start The start of the block.
+ @param length The length of the block.
+ @return Returns a dynamically-allocated 2-d array of blocks-hosts;
+ NULL on error.
+
+# Safety
+
+fs value should be a value constructed with hdfs*Connect* family of
+functions.  path should be a null-terminated string.
+*/
 #[no_mangle]
-pub extern "C" fn hdfsGetHosts(
-    _path: *const c_char,
-    _start: tOffset,
-    _length: tOffset,
-) -> *mut *mut *mut c_char {
-    unimplemented!()
+pub unsafe extern "C" fn hdfsGetHosts(
+    fs: hdfsFS,
+    path: *const c_char,
+    start: tOffset,
+    length: tOffset,
+) -> *const *const *const c_char {
+    let fs = expect_mut!(fs);
+    let path = CStr::from_ptr(path).to_str();
+    let path = path.map_err(PathError::Utf8).and_then(Path::new);
+    let path = match path {
+        Ok(path) => path,
+        Err(_) => {
+            *libc::__errno_location() = libc::EINVAL;
+            return null();
+        }
+    };
+
+    let info = match fs.get_file_info(&path) {
+        Ok(info) => info,
+        Err(e) => {
+            errors::set_errno_with_hadoop_error(fs::HdfsError::op(e));
+            return null();
+        }
+    }; // TODO check path
+
+    let block_info = match fs.get_file_block_locations(&path, start as _, length as _) {
+        Ok(block_info) => block_info,
+        Err(e) => {
+            errors::set_errno_with_hadoop_error(e);
+            return null();
+        }
+    };
+
+    // TODO: consider using malloc as one doesn't need to recalculate
+    // length on deallocation.
+    let mut main: Box<[*const *const c_char]> = vec![null(); block_info.len() + 1].into();
+
+    // main is longer by 1 element than block_info, and the last element remains null()
+    for (block_output, block) in main.iter_mut().zip(block_info.iter()) {
+        let mut block_data: Box<[*const c_char]> = vec![null(); block.locs.len() + 1].into();
+        for (host_output, loc) in block_data.iter_mut().zip(block.locs.iter()) {
+            let host_name = loc.get_id().get_hostName();
+            let host_name_c = CString::new(host_name).unwrap(/* TODO */);
+            *host_output = host_name_c.into_raw();
+        }
+        *block_output = block_data.as_ptr();
+        // Will be freed by hdfsFreeHosts.
+        std::mem::forget(block_data);
+    }
+
+    let res = main.as_ptr();
+    // Will be freed by hdfsFreeHosts.
+    std::mem::forget(main);
+
+    res
 }
 
 #[no_mangle]

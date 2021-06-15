@@ -24,10 +24,10 @@ use crate::{
 };
 use hdfesse_proto::{
     acl::FsPermissionProto,
-    hdfs::{HdfsFileStatusProto, HdfsFileStatusProto_FileType},
+    hdfs::{HdfsFileStatusProto, HdfsFileStatusProto_FileType, LocatedBlockProto},
     ClientNamenodeProtocol::{
-        DeleteRequestProto, GetFsStatusRequestProto, MkdirsRequestProto, SetPermissionRequestProto,
-        SetTimesRequestProto,
+        DeleteRequestProto, GetBlockLocationsRequestProto, GetFsStatusRequestProto,
+        MkdirsRequestProto, SetPermissionRequestProto, SetTimesRequestProto,
     },
 };
 use thiserror::Error;
@@ -268,6 +268,31 @@ impl<R: RpcConnection> Hdfs<R> {
             }),
             Err(e) => Err(HdfsError::op(FsError::Rpc(e))),
         }
+    }
+
+    // The method returns protobuf record, and it can be considered as
+    // a implementation leak.  One should just allocate new records
+    // vector and move data like strings into it.  See hadoop's
+    // DFSUtilClient.locatedBlocks2Locations.
+    pub fn get_file_block_locations(
+        &mut self,
+        path: &Path,
+        length: u64,
+        offset: u64,
+    ) -> Result<Vec<LocatedBlockProto>, HdfsError> {
+        let path_res = self.resolve.resolve_path(path).map_err(HdfsError::src)?;
+
+        let mut args = GetBlockLocationsRequestProto::default();
+        args.set_src(path_res.to_path_string());
+        args.set_length(length);
+        args.set_offset(offset);
+
+        let mut blocks = self
+            .service
+            .getBlockLocations(&args)
+            .map_err(FsError::Rpc)
+            .map_err(HdfsError::op)?;
+        Ok(blocks.take_locations().take_blocks().into_vec())
     }
 
     pub fn chmod(&mut self, path: &Path, chmod: u32) -> Result<(), HdfsError> {
