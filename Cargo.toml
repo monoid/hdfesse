@@ -5,6 +5,7 @@ members = [
    "hdfesse_proto",
    "libhdfesse",
    "libhdfs",
+   "pyhdfesse",
 ]
 
 [profile.release]
