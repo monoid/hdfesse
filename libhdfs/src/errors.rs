@@ -72,5 +72,5 @@ pub(crate) unsafe fn set_errno_with_hadoop_error<E: Into<LibError>>(e: E) {
         LibError::NulString(_) => libc::EINVAL,
         LibError::Oom => libc::ENOMEM,
     };
-    libc::__errno_location().write(the_errno);
+    errno::set_errno(errno::Errno(the_errno));
 }

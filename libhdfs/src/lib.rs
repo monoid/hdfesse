@@ -437,7 +437,7 @@ pub unsafe extern "C" fn hdfsExists(fs: hdfsFS, path: *const c_char) -> c_int {
         },
         _ => {
             // TODO seems to be the only option.
-            libc::__errno_location().write(errors::EINTERNAL);
+            errno::set_errno(errno::Errno(errors::EINTERNAL));
             -1
         }
     }
@@ -564,7 +564,7 @@ pub unsafe extern "C" fn hdfsDelete(fs: hdfsFS, path: *const c_char, recursive: 
         },
         _ => {
             // TODO seems to be the only option.
-            libc::__errno_location().write(errors::EINTERNAL);
+            errno::set_errno(errno::Errno(errors::EINTERNAL));
             -1
         }
     }
@@ -608,7 +608,7 @@ pub unsafe extern "C" fn hdfsCreateDirectory(fs: hdfsFS, path: *const c_char) ->
     let path = match path.map_err(PathError::Utf8).and_then(Path::new) {
         Ok(path) => path,
         Err(_) => {
-            *libc::__errno_location() = libc::EINVAL;
+            errno::set_errno(errno::Errno(libc::EINVAL));
             return -1;
         }
     };
@@ -618,7 +618,7 @@ pub unsafe extern "C" fn hdfsCreateDirectory(fs: hdfsFS, path: *const c_char) ->
         Ok(false) => {
             // Actually, mkdirs's success value is *always* true.  We
             // repeat hdfs.c's code that handles this case anyway.
-            *libc::__errno_location() = libc::EIO;
+            errno::set_errno(errno::Errno(libc::EIO));
             -1
         }
         Err(e) => {
@@ -839,7 +839,7 @@ pub unsafe extern "C" fn hdfsGetPathInfo(fs: hdfsFS, path: *const c_char) -> *mu
         },
         _ => {
             // it seems this is the most sane value for non-UTF8 strings.
-            libc::__errno_location().write(libc::EINVAL);
+            errno::set_errno(errno::Errno(libc::EINVAL));
             null_mut()
         }
     }
@@ -918,7 +918,7 @@ pub unsafe extern "C" fn hdfsGetHosts(
     let path = match path {
         Ok(path) => path,
         Err(_) => {
-            *libc::__errno_location() = libc::EINVAL;
+            errno::set_errno(errno::Errno(libc::EINVAL));
             return null();
         }
     };
@@ -1058,7 +1058,7 @@ pub unsafe extern "C" fn hdfsChmod(fs: hdfsFS, path: *const c_char, mode: c_shor
     let path = match path.map_err(PathError::Utf8).and_then(Path::new) {
         Ok(path) => path,
         Err(_) => {
-            *libc::__errno_location() = libc::EINVAL;
+            errno::set_errno(errno::Errno(libc::EINVAL));
             return -1;
         }
     };
@@ -1110,7 +1110,7 @@ pub unsafe extern "C" fn hdfsUtime(
     let path = match path.map_err(PathError::Utf8).and_then(Path::new) {
         Ok(path) => path,
         Err(_) => {
-            *libc::__errno_location() = libc::EINVAL;
+            errno::set_errno(errno::Errno(libc::EINVAL));
             return -1;
         }
     };
