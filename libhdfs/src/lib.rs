@@ -929,9 +929,9 @@ pub unsafe extern "C" fn hdfsGetHosts(
             errors::set_errno_with_hadoop_error(fs::HdfsError::op(e));
             return null();
         }
-    }; // TODO check path
+    };
 
-    let block_info = match fs.get_file_block_locations(&path, start as _, length as _) {
+    let block_info = match fs.get_file_block_locations(&info, start as _, length as _) {
         Ok(block_info) => block_info,
         Err(e) => {
             errors::set_errno_with_hadoop_error(e);

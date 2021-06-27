@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-use std::{borrow::Cow, fmt::Display};
+use std::{borrow::Cow, collections::HashMap, fmt::Display};
 
 pub use crate::fs_ls::LsGroupIterator;
 use crate::{
@@ -22,14 +22,10 @@ use crate::{
     rpc::{self, RpcConnection},
     service,
 };
-use hdfesse_proto::{
-    acl::FsPermissionProto,
-    hdfs::{HdfsFileStatusProto, HdfsFileStatusProto_FileType, LocatedBlockProto},
-    ClientNamenodeProtocol::{
+use hdfesse_proto::{ClientNamenodeProtocol::{
         DeleteRequestProto, GetBlockLocationsRequestProto, GetFsStatusRequestProto,
         MkdirsRequestProto, SetPermissionRequestProto, SetTimesRequestProto,
-    },
-};
+    }, acl::FsPermissionProto, hdfs::{ECSchemaProto, ErasureCodingPolicyProto, HdfsFileStatusProto, HdfsFileStatusProto_FileType, LocatedBlockProto, LocatedBlocksProto}};
 use thiserror::Error;
 
 const DEFAULT_DIR_PERM: u32 = 0o777;
@@ -150,6 +146,214 @@ pub struct FsStatus {
     pub missing_repl_one_blocks: u64,
     pub blocks_in_future: u64,
     pub pending_deletion_blocks: u64,
+}
+
+pub struct FsPermission {
+    pub perm: u16,
+}
+
+impl From<&FsPermissionProto> for FsPermission {
+    fn from(perm: &FsPermissionProto) -> Self {
+        Self {
+            perm: perm.get_perm() as u16,
+        }
+    }
+}
+
+pub struct ExtendedBlock {
+}
+
+pub struct LocatedBlock {
+    pub b: ExtendedBlock,
+    pub offset: u64,
+    pub locs: Vec<()>,
+    pub storage_ids: Vec<String>,
+    pub storage_types: Vec<()>,
+    pub corrupt: bool,
+    pub block_token: (),
+    pub cached_locs: Vec<()>,
+}
+
+impl From<LocatedBlockProto> for LocatedBlock {
+    fn from(source: LocatedBlockProto) -> Self {
+        Self {
+            b: unimplemented!(),
+            offset: source.get_offset(),
+            locs: unimplemented!(),
+            storage_ids: source.take_storageIDs().to_vec(),
+            storage_types: unimplemented!(),
+            corrupt: source.get_corrupt(),
+            block_token: unimplemented!(),
+            cached_locs: unimplemented!(),
+        }
+    }
+}
+
+
+pub struct FileEncryptionInfo {
+}
+
+pub struct EcSchema {
+    pub codec_name: Box<str>,
+    pub data_units: u32,
+    pub parity_units: u32,
+    pub options: HashMap<Box<str>, Box<str>>
+}
+
+impl From<ECSchemaProto> for EcSchema {
+    fn from(source: ECSchemaProto) -> Self {
+        Self {
+            codec_name: source.take_codecName().into(),
+            data_units: source.get_dataUnits(),
+            parity_units: source.get_parityUnits(),
+            options: source.take_options().into_iter().map(
+                |o| (o.take_key().into(), o.take_value().into())
+            ).collect(),
+        }
+    }
+}
+
+pub struct EcPolicy {
+    pub name: Box<str>,
+    pub schema: (),
+    pub cell_size: u64,
+    pub id: u8,
+}
+
+pub struct ErasureCodingPolicy {
+}
+
+pub enum ErasureCodingPolicyState {
+}
+
+pub struct ErasureCodingPolicyInfo {
+    pub policy: ErasureCodingPolicy,
+    pub state: ErasureCodingPolicyState,
+}
+
+impl From<ErasureCodingPolicyProto> for ErasureCodingPolicyInfo {
+    fn from(source: ErasureCodingPolicyProto) -> Self {
+        Self {
+            policy: source.
+        }
+    }
+}
+
+
+pub struct LocatedBlocks {
+    pub length: u64,
+    pub under_construction: bool,
+    pub block_list: Vec<LocatedBlock>,
+    pub last_block: Option<LocatedBlock>,
+    pub is_last_block_complete: bool,
+    pub file_encription_info: FileEncryptionInfo,
+    pub ec_policy: Option<EcPolicy>,
+}
+
+impl From<LocatedBlocksProto> for LocatedBlocks {
+    fn from(source: LocatedBlocksProto) -> Self {
+        Self {
+            length: source.get_fileLength(),
+            under_construction: source.get_underConstruction(),
+            block_list: unimplemented!(),
+            last_block: if source.has_lastBlock() {
+                Some(source.take_lastBlock().into())
+            } else {
+                None
+            },
+            is_last_block_complete: source.get_isLastBlockComplete(),
+            file_encription_info: if source.has_fileEncryptionInfo() {
+                Some(source.take_fileEncryptionInfo().into())
+            } else {
+                None
+            },
+            ec_policy: if source.has_ecPolicy() {
+                Some(source.take_ecPolicy().into())
+            } else {
+                None
+            }
+        }
+    }
+}
+
+pub struct HdfsFileStatus {
+    pub length: u64,
+    pub isdir: bool,
+    pub replication: u32,
+    pub blocksize: u64,
+    pub mtime: u64,
+    pub atime: u64,
+    pub perm: FsPermission,
+    pub flags: (),
+    pub owner: Box<str>,
+    pub group: Box<str>,
+    pub symlink: Option<Box<[u8]>>,
+    pub path: Box<[u8]>,
+    pub field_id: Option<u64>,
+    pub locations: Option<()>,
+    pub children: Option<i32>,
+    pub fe_info: Option<()>,
+    pub storage_policty: Option<i8>,
+    pub ec_policty: Option<EcPolicy>,
+}
+
+// See PBHelperClient.java
+impl From<HdfsFileStatusProto> for HdfsFileStatus {
+    fn from(fs: HdfsFileStatusProto) -> Self {
+        let flags = if fs.has_flags() {
+            fs.get_flags()
+        } else {
+            fs.get_permission() as u16,
+        };
+        Self {
+            length: fs.get_length(),
+            isdir: fs.get_fileType() == HdfsFileStatusProto_FileType::IS_DIR,
+            replication: fs.get_block_replication(),
+            blocksize: fs.get_blocksize(),
+            mtime: fs.get_modification_time(),
+            atime: fs.get_access_time(),
+            perm: fs.get_permission().into(),
+            flags,
+            owner: fs.take_owner().into(),
+            group: fs.take_group().into(),
+            symlink: if fs.get_fileType() == HdfsFileStatusProto_FileType::IS_SYMLINK {
+                Some(fs.take_symlink().into())
+            } else {
+                None
+            },
+            path: fs.take_path().into(),
+            field_id: if fs.has_fileId() {
+                Some(fs.get_fileId())
+            } else {
+                None
+            },
+            locations: if fs.has_locations() {
+                Some(fs.take_locations().into())
+            } else {
+                None
+            },
+            children: if fs.has_childrenNum() {
+                Some(fs.get_childrenNum())
+            } else {
+                None
+            },
+            fe_info: if fs.has_fileEncryptionInfo() {
+                Some(fs.get_fileEncryptionInfo().into())
+            } else {
+                None
+            },
+            storage_policty: if fs.has_storagePolicy() {
+                Some(fs.get_storagePolicy() as i8)
+            } else {
+                None
+            },
+            ec_policty: if fs.has_ecPolicy() {
+                Some(fs.take_ecPolicy().into())
+            } else {
+                None
+            }
+        }
+    }
 }
 
 pub struct Hdfs<R: RpcConnection = crate::ha_rpc::HaHdfsConnection<crate::rpc::SimpleConnector>> {
@@ -276,14 +480,16 @@ impl<R: RpcConnection> Hdfs<R> {
     // DFSUtilClient.locatedBlocks2Locations.
     pub fn get_file_block_locations(
         &mut self,
-        path: &Path,
+        file_status: &HdfsFileStatusProto,
         length: u64,
         offset: u64,
     ) -> Result<Vec<LocatedBlockProto>, HdfsError> {
+        // TODO check path is not dir
         let path_res = self.resolve.resolve_path(path).map_err(HdfsError::src)?;
 
+        // TODO should we check that the path exists and is a file?
         let mut args = GetBlockLocationsRequestProto::default();
-        args.set_src(path_res.to_path_string());
+        args.set_src(file_status.get_path());
         args.set_length(length);
         args.set_offset(offset);
 
