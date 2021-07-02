@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-use std::{borrow::Cow, collections::HashMap, fmt::Display};
+use std::{borrow::Cow, collections::HashMap, fmt::Display, u32};
 
 pub use crate::fs_ls::LsGroupIterator;
 use crate::{
@@ -25,8 +25,10 @@ use crate::{
 use hdfesse_proto::{ClientNamenodeProtocol::{
         DeleteRequestProto, GetBlockLocationsRequestProto, GetFsStatusRequestProto,
         MkdirsRequestProto, SetPermissionRequestProto, SetTimesRequestProto,
-    }, acl::FsPermissionProto, hdfs::{ECSchemaProto, ErasureCodingPolicyProto, HdfsFileStatusProto, HdfsFileStatusProto_FileType, LocatedBlockProto, LocatedBlocksProto}};
+    }, acl::FsPermissionProto, hdfs::{CipherSuiteProto, CryptoProtocolVersionProto, DatanodeIDProto, DatanodeInfoProto, DatanodeInfoProto_AdminState, ECSchemaProto, ErasureCodingPolicyProto, ExtendedBlockProto, FileEncryptionInfoProto, HdfsFileStatusProto, HdfsFileStatusProto_FileType, LocatedBlockProto, LocatedBlocksProto}};
+use protobuf::Message;
 use thiserror::Error;
+pub use hdfesse_proto::hdfs::ErasureCodingPolicyState;
 
 const DEFAULT_DIR_PERM: u32 = 0o777;
 
@@ -160,13 +162,92 @@ impl From<&FsPermissionProto> for FsPermission {
     }
 }
 
-pub struct ExtendedBlock {
+pub struct DatanodeID {
+    ip_addr: Box<str>,
+    host_name: Box<str>,
+    datanode_uuid: Box<str>,
+    xfer_port: u32,
+    info_port: u32,
+    info_secure_port: Option<u32>,
+    ipc_port: u32,
+}
+
+impl From<DatanodeIDProto> for DatanodeID {
+    fn from(source: DatanodeIDProto) -> Self {
+        Self {
+            ip_addr: source.take_ipAddr().into(),
+            host_name: source.take_hostName().into(),
+            datanode_uuid: source.take_datanodeUuid().into(),
+            xfer_port: source.get_xferPort(),
+            info_port: source.get_infoPort(),
+            info_secure_port: if source.has_infoSecurePort() {
+                Some(source.get_infoSecurePort())
+            } else {
+                None
+            },
+            ipc_port: source.get_ipcPort(),
+        }
+    }
+}
+
+pub type AdminState = DatanodeInfoProto_AdminState;
+
+pub struct DatanodeInfo {
+    id: DatanodeID,
+    network_location: Option<Box<str>>,
+    upgrade_domain: Option<Box<str>>,
+    capacity: u64,
+    dfs_used: u64,
+    non_dfs_used: u64,
+    remaining: u64,
+    block_pool_used: u64,
+    cache_capacity: u64,
+    cache_used: u64,
+    last_update: u64,
+    last_update_monotonic: u64,
+    xceiver_count: u32,
+    admin_state: AdminState,
+    last_block_report_time: u64,
+    last_block_report_monotonic: u64,
+    num_blocks: u32,
+}
+
+impl From<DatanodeInfoProto> for DatanodeInfo {
+    fn from(source: DatanodeInfoProto) -> Self {
+        Self {
+            id: source.take_id().into(),
+            network_location: if source.has_location() {
+                Some(source.get_location().into())
+            } else {
+                None
+            },
+            capacity: source.get_cacheCapacity(),
+            dfs_used: source.get_dfsUsed(),
+            non_dfs_used: source.get_nonDfsUsed(),
+            remaining: source.get_remaining(),
+            block_pool_used: source.get_blockPoolUsed(),
+            cache_capacity: source.get_cacheCapacity(),
+            cache_used: source.get_cacheUsed(),
+            last_update: source.get_lastUpdate(),
+            last_update_monotonic: source.get_lastUpdateMonotonic(),
+            xceiver_count: source.get_xceiverCount(),
+            admin_state: source.get_adminState().into(),
+            upgrade_domain: if source.has_upgradeDomain() {
+                Some(source.get_upgradeDomain().into())
+            } else {
+                None
+            },
+            last_block_report_time: source.get_lastBlockReportTime(),
+            last_block_report_monotonic: source.get_lastBlockReportMonotonic(),
+            num_blocks: source.get_numBlocks(),
+        }
+    }
 }
 
 pub struct LocatedBlock {
     pub b: ExtendedBlock,
     pub offset: u64,
-    pub locs: Vec<()>,
+    pub locs: Vec<DatanodeInfo>,
     pub storage_ids: Vec<String>,
     pub storage_types: Vec<()>,
     pub corrupt: bool,
@@ -177,9 +258,9 @@ pub struct LocatedBlock {
 impl From<LocatedBlockProto> for LocatedBlock {
     fn from(source: LocatedBlockProto) -> Self {
         Self {
-            b: unimplemented!(),
+            b: source.take_b().into(),
             offset: source.get_offset(),
-            locs: unimplemented!(),
+            locs: source.take_locs().into_iter().map(Into::into).collect(),
             storage_ids: source.take_storageIDs().to_vec(),
             storage_types: unimplemented!(),
             corrupt: source.get_corrupt(),
@@ -190,7 +271,29 @@ impl From<LocatedBlockProto> for LocatedBlock {
 }
 
 
+pub type CipherSuite = CipherSuiteProto;
+pub type CryptoProtocolVersion = CryptoProtocolVersionProto;
+
 pub struct FileEncryptionInfo {
+    pub suite: CipherSuite,
+    pub version: CryptoProtocolVersion,
+    pub edek: Box<[u8]>,
+    pub iv: Box<[u8]>,
+    pub key_name: Box<str>,
+    pub ez_key_version_name: Box<str>,
+}
+
+impl From<FileEncryptionInfoProto> for FileEncryptionInfo {
+    fn from(proto: FileEncryptionInfoProto) -> Self {
+        Self {
+            suite: proto.get_suite().into(),
+            version: proto.get_cryptoProtocolVersion().into(),
+            edek: proto.take_key().into(),
+            iv: proto.take_iv().into(),
+            key_name: proto.take_keyName().into(),
+            ez_key_version_name: proto.take_ezKeyVersionName().into(),
+        }
+    }
 }
 
 pub struct EcSchema {
@@ -213,17 +316,39 @@ impl From<ECSchemaProto> for EcSchema {
     }
 }
 
-pub struct EcPolicy {
+pub struct ErasureCodingPolicy {
     pub name: Box<str>,
-    pub schema: (),
-    pub cell_size: u64,
+    pub schema: EcSchema,
+    pub cell_size: u32,
     pub id: u8,
 }
 
-pub struct ErasureCodingPolicy {
+pub struct SystemErasureCodingPolicy {
 }
 
-pub enum ErasureCodingPolicyState {
+impl SystemErasureCodingPolicy {
+    fn get_by_id(id: u8) -> Option<ErasureCodingPolicy> {
+        // TODO implement other if possible
+        None
+    }
+}
+
+impl From<&ErasureCodingPolicyProto> for ErasureCodingPolicy {
+    fn from(proto: &ErasureCodingPolicyProto) -> Self {
+        let id = (proto.get_id() & 0xFF) as u8;
+        match SystemErasureCodingPolicy::get_by_id(id) {
+            Some(policy) => policy,
+            None => {
+                // TODO check precondition
+                ErasureCodingPolicy {
+                    name: proto.get_name().into(),
+                    schema: proto.get_schema().clone().into(),
+                    cell_size: proto.get_cellSize(),
+                    id,
+                }
+            }
+        }
+    }
 }
 
 pub struct ErasureCodingPolicyInfo {
@@ -233,12 +358,32 @@ pub struct ErasureCodingPolicyInfo {
 
 impl From<ErasureCodingPolicyProto> for ErasureCodingPolicyInfo {
     fn from(source: ErasureCodingPolicyProto) -> Self {
+        // TODO: use TryInto, but it will affect many other conversions.
+        assert!(source.has_state());
         Self {
-            policy: source.
+            policy: (&source).into(),
+            state: source.get_state().into(),
         }
     }
 }
 
+pub struct ExtendedBlock {
+    pub pool_id: Box<str>,
+    pub block_id: u64,
+    pub num_bytes: u64,
+    pub generation_stamp: u64,
+}
+
+impl From<ExtendedBlockProto> for ExtendedBlock {
+    fn from(source: ExtendedBlockProto) -> Self {
+        Self {
+            pool_id: source.take_poolId().into(),
+            block_id: source.get_blockId(),
+            num_bytes: source.get_numBytes(),
+            generation_stamp: source.get_generationStamp(),
+        }
+    }
+}
 
 pub struct LocatedBlocks {
     pub length: u64,
@@ -246,8 +391,8 @@ pub struct LocatedBlocks {
     pub block_list: Vec<LocatedBlock>,
     pub last_block: Option<LocatedBlock>,
     pub is_last_block_complete: bool,
-    pub file_encription_info: FileEncryptionInfo,
-    pub ec_policy: Option<EcPolicy>,
+    pub file_encription_info: Option<FileEncryptionInfo>,
+    pub ec_policy: Option<ErasureCodingPolicy>,
 }
 
 impl From<LocatedBlocksProto> for LocatedBlocks {
@@ -255,23 +400,11 @@ impl From<LocatedBlocksProto> for LocatedBlocks {
         Self {
             length: source.get_fileLength(),
             under_construction: source.get_underConstruction(),
-            block_list: unimplemented!(),
-            last_block: if source.has_lastBlock() {
-                Some(source.take_lastBlock().into())
-            } else {
-                None
-            },
+            block_list: source.take_blocks().into_iter().map(Into::into).collect(),
+            last_block: source.lastBlock.into_option().map(Into::into),
             is_last_block_complete: source.get_isLastBlockComplete(),
-            file_encription_info: if source.has_fileEncryptionInfo() {
-                Some(source.take_fileEncryptionInfo().into())
-            } else {
-                None
-            },
-            ec_policy: if source.has_ecPolicy() {
-                Some(source.take_ecPolicy().into())
-            } else {
-                None
-            }
+            file_encription_info: source.fileEncryptionInfo.into_option().map(Into::into),
+            ec_policy: source.ecPolicy.into_option().as_ref().map(Into::into),
         }
     }
 }
@@ -284,17 +417,17 @@ pub struct HdfsFileStatus {
     pub mtime: u64,
     pub atime: u64,
     pub perm: FsPermission,
-    pub flags: (),
+    pub flags: u32,
     pub owner: Box<str>,
     pub group: Box<str>,
     pub symlink: Option<Box<[u8]>>,
     pub path: Box<[u8]>,
     pub field_id: Option<u64>,
-    pub locations: Option<()>,
+    pub locations: Option<LocatedBlocks>,
     pub children: Option<i32>,
-    pub fe_info: Option<()>,
-    pub storage_policty: Option<i8>,
-    pub ec_policty: Option<EcPolicy>,
+    pub fe_info: Option<FileEncryptionInfo>,
+    pub storage_policy: Option<i8>,
+    pub ec_policty: Option<ErasureCodingPolicy>,
 }
 
 // See PBHelperClient.java
@@ -303,7 +436,7 @@ impl From<HdfsFileStatusProto> for HdfsFileStatus {
         let flags = if fs.has_flags() {
             fs.get_flags()
         } else {
-            fs.get_permission() as u16,
+            fs.get_permission().get_perm()
         };
         Self {
             length: fs.get_length(),
@@ -338,17 +471,17 @@ impl From<HdfsFileStatusProto> for HdfsFileStatus {
                 None
             },
             fe_info: if fs.has_fileEncryptionInfo() {
-                Some(fs.get_fileEncryptionInfo().into())
+                Some(fs.take_fileEncryptionInfo().into())
             } else {
                 None
             },
-            storage_policty: if fs.has_storagePolicy() {
+            storage_policy: if fs.has_storagePolicy() {
                 Some(fs.get_storagePolicy() as i8)
             } else {
                 None
             },
             ec_policty: if fs.has_ecPolicy() {
-                Some(fs.take_ecPolicy().into())
+                Some(fs.get_ecPolicy().into())
             } else {
                 None
             }
