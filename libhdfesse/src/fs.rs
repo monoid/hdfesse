@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-use std::{borrow::Cow, collections::HashMap, fmt::Display, u32};
+use std::{borrow::Cow, collections::HashMap, fmt::Display, sync::Arc};
 
 pub use crate::fs_ls::LsGroupIterator;
 use crate::{
@@ -22,13 +22,22 @@ use crate::{
     rpc::{self, RpcConnection},
     service,
 };
-use hdfesse_proto::{ClientNamenodeProtocol::{
+pub use hdfesse_proto::hdfs::ErasureCodingPolicyState;
+use hdfesse_proto::{
+    acl::FsPermissionProto,
+    hdfs::{
+        CipherSuiteProto, CryptoProtocolVersionProto, DatanodeIDProto, DatanodeInfoProto,
+        DatanodeInfoProto_AdminState, ECSchemaProto, ErasureCodingPolicyProto, ExtendedBlockProto,
+        FileEncryptionInfoProto, HdfsFileStatusProto, HdfsFileStatusProto_FileType,
+        LocatedBlockProto, LocatedBlocksProto, StorageTypeProto,
+    },
+    ClientNamenodeProtocol::{
         DeleteRequestProto, GetBlockLocationsRequestProto, GetFsStatusRequestProto,
         MkdirsRequestProto, SetPermissionRequestProto, SetTimesRequestProto,
-    }, acl::FsPermissionProto, hdfs::{CipherSuiteProto, CryptoProtocolVersionProto, DatanodeIDProto, DatanodeInfoProto, DatanodeInfoProto_AdminState, ECSchemaProto, ErasureCodingPolicyProto, ExtendedBlockProto, FileEncryptionInfoProto, HdfsFileStatusProto, HdfsFileStatusProto_FileType, LocatedBlockProto, LocatedBlocksProto}};
-use protobuf::Message;
+    },
+    Security::TokenProto,
+};
 use thiserror::Error;
-pub use hdfesse_proto::hdfs::ErasureCodingPolicyState;
 
 const DEFAULT_DIR_PERM: u32 = 0o777;
 
@@ -191,6 +200,7 @@ impl From<DatanodeIDProto> for DatanodeID {
 }
 
 pub type AdminState = DatanodeInfoProto_AdminState;
+pub type StorageType = StorageTypeProto;
 
 pub struct DatanodeInfo {
     id: DatanodeID,
@@ -244,32 +254,61 @@ impl From<DatanodeInfoProto> for DatanodeInfo {
     }
 }
 
-pub struct LocatedBlock {
-    pub b: ExtendedBlock,
-    pub offset: u64,
-    pub locs: Vec<DatanodeInfo>,
-    pub storage_ids: Vec<String>,
-    pub storage_types: Vec<()>,
-    pub corrupt: bool,
-    pub block_token: (),
-    pub cached_locs: Vec<()>,
+pub struct Token {
+    pub identifier: Vec<u8>,
+    pub password: Vec<u8>,
+    pub kind: Box<str>,
+    pub service: Box<str>,
 }
 
-impl From<LocatedBlockProto> for LocatedBlock {
-    fn from(source: LocatedBlockProto) -> Self {
+impl From<TokenProto> for Token {
+    fn from(source: TokenProto) -> Self {
         Self {
-            b: source.take_b().into(),
-            offset: source.get_offset(),
-            locs: source.take_locs().into_iter().map(Into::into).collect(),
-            storage_ids: source.take_storageIDs().to_vec(),
-            storage_types: unimplemented!(),
-            corrupt: source.get_corrupt(),
-            block_token: unimplemented!(),
-            cached_locs: unimplemented!(),
+            identifier: source.take_identifier(),
+            password: source.take_password(),
+            kind: source.take_kind().into(),
+            service: source.take_service().into(),
         }
     }
 }
 
+pub struct LocatedBlock {
+    pub b: ExtendedBlock,
+    pub offset: u64,
+    pub locs: Vec<Arc<DatanodeInfo>>,
+    pub storage_ids: Vec<String>,
+    pub storage_types: Vec<StorageType>,
+    pub corrupt: bool,
+    pub block_token: Token,
+    pub cached_locs: Vec<Arc<DatanodeInfo>>,
+}
+
+impl From<LocatedBlockProto> for LocatedBlock {
+    fn from(source: LocatedBlockProto) -> Self {
+        let locs: Vec<Arc<DatanodeInfo>> = source
+            .take_locs()
+            .into_iter()
+            .map(Into::into)
+            .map(Arc::new)
+            .collect();
+        let cached_locs: Vec<Arc<DatanodeInfo>> = source
+            .take_isCached()
+            .into_iter()
+            .zip(locs.iter())
+            .filter_map(|(is_cached, loc)| if is_cached { Some(loc.clone()) } else { None })
+            .collect();
+        Self {
+            b: source.take_b().into(),
+            offset: source.get_offset(),
+            locs,
+            storage_ids: source.take_storageIDs().to_vec(),
+            storage_types: source.storageTypes,
+            corrupt: source.get_corrupt(),
+            block_token: source.take_blockToken().into(),
+            cached_locs,
+        }
+    }
+}
 
 pub type CipherSuite = CipherSuiteProto;
 pub type CryptoProtocolVersion = CryptoProtocolVersionProto;
@@ -300,7 +339,7 @@ pub struct EcSchema {
     pub codec_name: Box<str>,
     pub data_units: u32,
     pub parity_units: u32,
-    pub options: HashMap<Box<str>, Box<str>>
+    pub options: HashMap<Box<str>, Box<str>>,
 }
 
 impl From<ECSchemaProto> for EcSchema {
@@ -309,9 +348,11 @@ impl From<ECSchemaProto> for EcSchema {
             codec_name: source.take_codecName().into(),
             data_units: source.get_dataUnits(),
             parity_units: source.get_parityUnits(),
-            options: source.take_options().into_iter().map(
-                |o| (o.take_key().into(), o.take_value().into())
-            ).collect(),
+            options: source
+                .take_options()
+                .into_iter()
+                .map(|o| (o.take_key().into(), o.take_value().into()))
+                .collect(),
         }
     }
 }
@@ -324,6 +365,7 @@ pub struct ErasureCodingPolicy {
 }
 
 pub struct SystemErasureCodingPolicy {
+    // TODO
 }
 
 impl SystemErasureCodingPolicy {
@@ -484,7 +526,7 @@ impl From<HdfsFileStatusProto> for HdfsFileStatus {
                 Some(fs.get_ecPolicy().into())
             } else {
                 None
-            }
+            },
         }
     }
 }
