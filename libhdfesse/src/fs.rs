@@ -182,19 +182,19 @@ pub struct DatanodeID {
 }
 
 impl From<DatanodeIDProto> for DatanodeID {
-    fn from(source: DatanodeIDProto) -> Self {
+    fn from(mut proto: DatanodeIDProto) -> Self {
         Self {
-            ip_addr: source.take_ipAddr().into(),
-            host_name: source.take_hostName().into(),
-            datanode_uuid: source.take_datanodeUuid().into(),
-            xfer_port: source.get_xferPort(),
-            info_port: source.get_infoPort(),
-            info_secure_port: if source.has_infoSecurePort() {
-                Some(source.get_infoSecurePort())
+            ip_addr: proto.take_ipAddr().into(),
+            host_name: proto.take_hostName().into(),
+            datanode_uuid: proto.take_datanodeUuid().into(),
+            xfer_port: proto.get_xferPort(),
+            info_port: proto.get_infoPort(),
+            info_secure_port: if proto.has_infoSecurePort() {
+                Some(proto.get_infoSecurePort())
             } else {
                 None
             },
-            ipc_port: source.get_ipcPort(),
+            ipc_port: proto.get_ipcPort(),
         }
     }
 }
@@ -223,33 +223,33 @@ pub struct DatanodeInfo {
 }
 
 impl From<DatanodeInfoProto> for DatanodeInfo {
-    fn from(source: DatanodeInfoProto) -> Self {
+    fn from(mut proto: DatanodeInfoProto) -> Self {
         Self {
-            id: source.take_id().into(),
-            network_location: if source.has_location() {
-                Some(source.get_location().into())
+            id: proto.take_id().into(),
+            network_location: if proto.has_location() {
+                Some(proto.get_location().into())
             } else {
                 None
             },
-            capacity: source.get_cacheCapacity(),
-            dfs_used: source.get_dfsUsed(),
-            non_dfs_used: source.get_nonDfsUsed(),
-            remaining: source.get_remaining(),
-            block_pool_used: source.get_blockPoolUsed(),
-            cache_capacity: source.get_cacheCapacity(),
-            cache_used: source.get_cacheUsed(),
-            last_update: source.get_lastUpdate(),
-            last_update_monotonic: source.get_lastUpdateMonotonic(),
-            xceiver_count: source.get_xceiverCount(),
-            admin_state: source.get_adminState().into(),
-            upgrade_domain: if source.has_upgradeDomain() {
-                Some(source.get_upgradeDomain().into())
+            capacity: proto.get_cacheCapacity(),
+            dfs_used: proto.get_dfsUsed(),
+            non_dfs_used: proto.get_nonDfsUsed(),
+            remaining: proto.get_remaining(),
+            block_pool_used: proto.get_blockPoolUsed(),
+            cache_capacity: proto.get_cacheCapacity(),
+            cache_used: proto.get_cacheUsed(),
+            last_update: proto.get_lastUpdate(),
+            last_update_monotonic: proto.get_lastUpdateMonotonic(),
+            xceiver_count: proto.get_xceiverCount(),
+            admin_state: proto.get_adminState().into(),
+            upgrade_domain: if proto.has_upgradeDomain() {
+                Some(proto.get_upgradeDomain().into())
             } else {
                 None
             },
-            last_block_report_time: source.get_lastBlockReportTime(),
-            last_block_report_monotonic: source.get_lastBlockReportMonotonic(),
-            num_blocks: source.get_numBlocks(),
+            last_block_report_time: proto.get_lastBlockReportTime(),
+            last_block_report_monotonic: proto.get_lastBlockReportMonotonic(),
+            num_blocks: proto.get_numBlocks(),
         }
     }
 }
@@ -262,12 +262,12 @@ pub struct Token {
 }
 
 impl From<TokenProto> for Token {
-    fn from(source: TokenProto) -> Self {
+    fn from(mut proto: TokenProto) -> Self {
         Self {
-            identifier: source.take_identifier(),
-            password: source.take_password(),
-            kind: source.take_kind().into(),
-            service: source.take_service().into(),
+            identifier: proto.take_identifier(),
+            password: proto.take_password(),
+            kind: proto.take_kind().into(),
+            service: proto.take_service().into(),
         }
     }
 }
@@ -284,27 +284,27 @@ pub struct LocatedBlock {
 }
 
 impl From<LocatedBlockProto> for LocatedBlock {
-    fn from(source: LocatedBlockProto) -> Self {
-        let locs: Vec<Arc<DatanodeInfo>> = source
+    fn from(mut proto: LocatedBlockProto) -> Self {
+        let locs: Vec<Arc<DatanodeInfo>> = proto
             .take_locs()
             .into_iter()
             .map(Into::into)
             .map(Arc::new)
             .collect();
-        let cached_locs: Vec<Arc<DatanodeInfo>> = source
+        let cached_locs: Vec<Arc<DatanodeInfo>> = proto
             .take_isCached()
             .into_iter()
             .zip(locs.iter())
             .filter_map(|(is_cached, loc)| if is_cached { Some(loc.clone()) } else { None })
             .collect();
         Self {
-            b: source.take_b().into(),
-            offset: source.get_offset(),
+            b: proto.take_b().into(),
+            offset: proto.get_offset(),
             locs,
-            storage_ids: source.take_storageIDs().to_vec(),
-            storage_types: source.storageTypes,
-            corrupt: source.get_corrupt(),
-            block_token: source.take_blockToken().into(),
+            storage_ids: proto.take_storageIDs().to_vec(),
+            storage_types: proto.take_storageTypes(),
+            corrupt: proto.get_corrupt(),
+            block_token: proto.take_blockToken().into(),
             cached_locs,
         }
     }
@@ -323,7 +323,7 @@ pub struct FileEncryptionInfo {
 }
 
 impl From<FileEncryptionInfoProto> for FileEncryptionInfo {
-    fn from(proto: FileEncryptionInfoProto) -> Self {
+    fn from(mut proto: FileEncryptionInfoProto) -> Self {
         Self {
             suite: proto.get_suite().into(),
             version: proto.get_cryptoProtocolVersion().into(),
@@ -343,15 +343,15 @@ pub struct EcSchema {
 }
 
 impl From<ECSchemaProto> for EcSchema {
-    fn from(source: ECSchemaProto) -> Self {
+    fn from(mut proto: ECSchemaProto) -> Self {
         Self {
-            codec_name: source.take_codecName().into(),
-            data_units: source.get_dataUnits(),
-            parity_units: source.get_parityUnits(),
-            options: source
+            codec_name: proto.take_codecName().into(),
+            data_units: proto.get_dataUnits(),
+            parity_units: proto.get_parityUnits(),
+            options: proto
                 .take_options()
                 .into_iter()
-                .map(|o| (o.take_key().into(), o.take_value().into()))
+                .map(|mut o| (o.take_key().into(), o.take_value().into()))
                 .collect(),
         }
     }
@@ -417,12 +417,12 @@ pub struct ExtendedBlock {
 }
 
 impl From<ExtendedBlockProto> for ExtendedBlock {
-    fn from(source: ExtendedBlockProto) -> Self {
+    fn from(mut proto: ExtendedBlockProto) -> Self {
         Self {
-            pool_id: source.take_poolId().into(),
-            block_id: source.get_blockId(),
-            num_bytes: source.get_numBytes(),
-            generation_stamp: source.get_generationStamp(),
+            pool_id: proto.take_poolId().into(),
+            block_id: proto.get_blockId(),
+            num_bytes: proto.get_numBytes(),
+            generation_stamp: proto.get_generationStamp(),
         }
     }
 }
@@ -438,15 +438,15 @@ pub struct LocatedBlocks {
 }
 
 impl From<LocatedBlocksProto> for LocatedBlocks {
-    fn from(source: LocatedBlocksProto) -> Self {
+    fn from(mut proto: LocatedBlocksProto) -> Self {
         Self {
-            length: source.get_fileLength(),
-            under_construction: source.get_underConstruction(),
-            block_list: source.take_blocks().into_iter().map(Into::into).collect(),
-            last_block: source.lastBlock.into_option().map(Into::into),
-            is_last_block_complete: source.get_isLastBlockComplete(),
-            file_encription_info: source.fileEncryptionInfo.into_option().map(Into::into),
-            ec_policy: source.ecPolicy.into_option().as_ref().map(Into::into),
+            length: proto.get_fileLength(),
+            under_construction: proto.get_underConstruction(),
+            block_list: proto.take_blocks().into_iter().map(Into::into).collect(),
+            last_block: proto.lastBlock.take().map(Into::into),
+            is_last_block_complete: proto.get_isLastBlockComplete(),
+            file_encription_info: proto.fileEncryptionInfo.into_option().map(Into::into),
+            ec_policy: proto.ecPolicy.into_option().as_ref().map(Into::into),
         }
     }
 }
@@ -474,7 +474,7 @@ pub struct HdfsFileStatus {
 
 // See PBHelperClient.java
 impl From<HdfsFileStatusProto> for HdfsFileStatus {
-    fn from(fs: HdfsFileStatusProto) -> Self {
+    fn from(mut fs: HdfsFileStatusProto) -> Self {
         let flags = if fs.has_flags() {
             fs.get_flags()
         } else {
