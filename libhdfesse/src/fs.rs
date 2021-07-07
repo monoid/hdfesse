@@ -660,11 +660,19 @@ impl<R: RpcConnection> Hdfs<R> {
         offset: u64,
     ) -> Result<Vec<LocatedBlockProto>, HdfsError> {
         // TODO check path is not dir
-        let path_res = self.resolve.resolve_path(path).map_err(HdfsError::src)?;
+        let path = std::str::from_utf8(file_status.get_path())
+            .map_err(|e| HdfsError::src(FsError::Path(PathError::Utf8(e))))?
+            .to_string();
 
-        // TODO should we check that the path exists and is a file?
+        let path1 = Path::new(&path)
+            .map_err(FsError::Path)
+            .map_err(HdfsError::src)?;
+
+        // TODO is re-resolving really required?
+        let path_res = self.resolve.resolve_path(&path1).map_err(HdfsError::src)?;
+
         let mut args = GetBlockLocationsRequestProto::default();
-        args.set_src(file_status.get_path());
+        args.set_src(path_res.to_path_string());
         args.set_length(length);
         args.set_offset(offset);
 
