@@ -172,13 +172,13 @@ impl From<&FsPermissionProto> for FsPermission {
 }
 
 pub struct DatanodeID {
-    ip_addr: Box<str>,
-    host_name: Box<str>,
-    datanode_uuid: Box<str>,
-    xfer_port: u32,
-    info_port: u32,
-    info_secure_port: Option<u32>,
-    ipc_port: u32,
+    pub ip_addr: Box<str>,
+    pub host_name: Box<str>,
+    pub datanode_uuid: Box<str>,
+    pub xfer_port: u32,
+    pub info_port: u32,
+    pub info_secure_port: Option<u32>,
+    pub ipc_port: u32,
 }
 
 impl From<DatanodeIDProto> for DatanodeID {
@@ -203,23 +203,23 @@ pub type AdminState = DatanodeInfoProto_AdminState;
 pub type StorageType = StorageTypeProto;
 
 pub struct DatanodeInfo {
-    id: DatanodeID,
-    network_location: Option<Box<str>>,
-    upgrade_domain: Option<Box<str>>,
-    capacity: u64,
-    dfs_used: u64,
-    non_dfs_used: u64,
-    remaining: u64,
-    block_pool_used: u64,
-    cache_capacity: u64,
-    cache_used: u64,
-    last_update: u64,
-    last_update_monotonic: u64,
-    xceiver_count: u32,
-    admin_state: AdminState,
-    last_block_report_time: u64,
-    last_block_report_monotonic: u64,
-    num_blocks: u32,
+    pub id: DatanodeID,
+    pub network_location: Option<Box<str>>,
+    pub upgrade_domain: Option<Box<str>>,
+    pub capacity: u64,
+    pub dfs_used: u64,
+    pub non_dfs_used: u64,
+    pub remaining: u64,
+    pub block_pool_used: u64,
+    pub cache_capacity: u64,
+    pub cache_used: u64,
+    pub last_update: u64,
+    pub last_update_monotonic: u64,
+    pub xceiver_count: u32,
+    pub admin_state: AdminState,
+    pub last_block_report_time: u64,
+    pub last_block_report_monotonic: u64,
+    pub num_blocks: u32,
 }
 
 impl From<DatanodeInfoProto> for DatanodeInfo {
