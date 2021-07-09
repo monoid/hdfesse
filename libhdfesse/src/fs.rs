@@ -16,12 +16,7 @@
 use std::{borrow::Cow, collections::HashMap, fmt::Display, sync::Arc};
 
 pub use crate::fs_ls::LsGroupIterator;
-use crate::{
-    fs_ls::LsIterator,
-    path::{Path, PathError, UriResolver},
-    rpc::{self, RpcConnection},
-    service,
-};
+use crate::{erasure::SystemErasureCodingPolicy, fs_ls::LsIterator, path::{Path, PathError, UriResolver}, rpc::{self, RpcConnection}, service};
 pub use hdfesse_proto::hdfs::ErasureCodingPolicyState;
 use hdfesse_proto::{
     acl::FsPermissionProto,
@@ -335,8 +330,9 @@ impl From<FileEncryptionInfoProto> for FileEncryptionInfo {
     }
 }
 
+#[derive(Clone)]
 pub struct EcSchema {
-    pub codec_name: Box<str>,
+    pub codec_name: Cow<'static, str>,
     pub data_units: u32,
     pub parity_units: u32,
     pub options: HashMap<Box<str>, Box<str>>,
@@ -357,33 +353,24 @@ impl From<ECSchemaProto> for EcSchema {
     }
 }
 
+
+#[derive(Clone)]
 pub struct ErasureCodingPolicy {
-    pub name: Box<str>,
+    pub name: Cow<'static, str>,
     pub schema: EcSchema,
     pub cell_size: u32,
     pub id: u8,
-}
-
-pub struct SystemErasureCodingPolicy {
-    // TODO
-}
-
-impl SystemErasureCodingPolicy {
-    fn get_by_id(id: u8) -> Option<ErasureCodingPolicy> {
-        // TODO implement other if possible
-        None
-    }
 }
 
 impl From<&ErasureCodingPolicyProto> for ErasureCodingPolicy {
     fn from(proto: &ErasureCodingPolicyProto) -> Self {
         let id = (proto.get_id() & 0xFF) as u8;
         match SystemErasureCodingPolicy::get_by_id(id) {
-            Some(policy) => policy,
+            Some(policy) => policy.clone(),
             None => {
                 // TODO check precondition
                 ErasureCodingPolicy {
-                    name: proto.get_name().into(),
+                    name: proto.get_name().to_owned().into(),
                     schema: proto.get_schema().clone().into(),
                     cell_size: proto.get_cellSize(),
                     id,

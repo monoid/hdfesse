@@ -13,6 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
+pub mod erasure;
 pub mod fs;
 mod fs_ls;
 pub mod ha_rpc;
