@@ -220,7 +220,7 @@ impl UriResolver {
     pub fn resolve<'a>(&self, path: &Path<'a>) -> Result<Path<'a>, PathError> {
         let uri = &path.path;
         let mut res: URIReference = self.default_uri.clone().into();
-        Ok(if uri.is_relative_path_reference() {
+        if uri.is_relative_path_reference() {
             let mut res_path = res.path().clone();
             for part in uri.path().segments() {
                 res_path
@@ -229,11 +229,9 @@ impl UriResolver {
             }
             res_path.normalize(false);
             res.set_path(res_path).map_err(PathError::PartError)?;
-            Path { path: res }
         } else if uri.is_absolute_path_reference() {
             res.set_path(uri.clone().into_parts().2)
                 .map_err(PathError::PartError)?;
-            Path { path: res }
         } else {
             // TODO fragment can present.
             let (mb_scheme, mb_auth, path, _mb_query, _mb_fragment) = uri.clone().into_parts();
@@ -260,8 +258,8 @@ impl UriResolver {
             res.set_path(path).map_err(PathError::PartError)?;
             // TODO query shouldn't present; should we
             // return error if they do present?
-            Path { path: res }
-        })
+        };
+        Ok(Path { path: res })
     }
 
     /**

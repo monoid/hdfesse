@@ -70,7 +70,7 @@ lazy_static::lazy_static! {
         parity_units: 2,
         options: Default::default(),
     };
-    
+
     static ref SYS_POLICY1: ErasureCodingPolicy = ErasureCodingPolicy {
         name: RS_6_3_SCHEMA.codec_name.clone(),
         schema: RS_6_3_SCHEMA.clone(),
@@ -118,8 +118,7 @@ lazy_static::lazy_static! {
     ].into_boxed_slice();
 }
 
-pub struct SystemErasureCodingPolicy {
-}
+pub struct SystemErasureCodingPolicy {}
 
 // TODO: has it to return an Option<Arc<ErasureCodingPolicy>>?
 impl SystemErasureCodingPolicy {

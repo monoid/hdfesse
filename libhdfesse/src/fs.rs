@@ -16,7 +16,13 @@
 use std::{borrow::Cow, collections::HashMap, fmt::Display, sync::Arc};
 
 pub use crate::fs_ls::LsGroupIterator;
-use crate::{erasure::SystemErasureCodingPolicy, fs_ls::LsIterator, path::{Path, PathError, UriResolver}, rpc::{self, RpcConnection}, service};
+use crate::{
+    erasure::SystemErasureCodingPolicy,
+    fs_ls::LsIterator,
+    path::{Path, PathError, UriResolver},
+    rpc::{self, RpcConnection},
+    service,
+};
 pub use hdfesse_proto::hdfs::ErasureCodingPolicyState;
 use hdfesse_proto::{
     acl::FsPermissionProto,
@@ -236,7 +242,7 @@ impl From<DatanodeInfoProto> for DatanodeInfo {
             last_update: proto.get_lastUpdate(),
             last_update_monotonic: proto.get_lastUpdateMonotonic(),
             xceiver_count: proto.get_xceiverCount(),
-            admin_state: proto.get_adminState().into(),
+            admin_state: proto.get_adminState(),
             upgrade_domain: if proto.has_upgradeDomain() {
                 Some(proto.get_upgradeDomain().into())
             } else {
@@ -320,8 +326,8 @@ pub struct FileEncryptionInfo {
 impl From<FileEncryptionInfoProto> for FileEncryptionInfo {
     fn from(mut proto: FileEncryptionInfoProto) -> Self {
         Self {
-            suite: proto.get_suite().into(),
-            version: proto.get_cryptoProtocolVersion().into(),
+            suite: proto.get_suite(),
+            version: proto.get_cryptoProtocolVersion(),
             edek: proto.take_key().into(),
             iv: proto.take_iv().into(),
             key_name: proto.take_keyName().into(),
@@ -352,7 +358,6 @@ impl From<ECSchemaProto> for EcSchema {
         }
     }
 }
-
 
 #[derive(Clone)]
 pub struct ErasureCodingPolicy {
@@ -391,7 +396,7 @@ impl From<ErasureCodingPolicyProto> for ErasureCodingPolicyInfo {
         assert!(source.has_state());
         Self {
             policy: (&source).into(),
-            state: source.get_state().into(),
+            state: source.get_state(),
         }
     }
 }
