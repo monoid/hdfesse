@@ -947,7 +947,7 @@ pub unsafe extern "C" fn hdfsGetHosts(
     for (block_output, block) in main.iter_mut().zip(block_info.iter()) {
         let mut block_data: Box<[*const c_char]> = vec![null(); block.locs.len() + 1].into();
         for (host_output, loc) in block_data.iter_mut().zip(block.locs.iter()) {
-            let host_name = loc.get_id().get_hostName();
+            let host_name = loc.id.host_name.as_ref();
             let host_name_c = CString::new(host_name).unwrap(/* TODO */);
             *host_output = host_name_c.into_raw();
         }

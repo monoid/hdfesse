@@ -21,4 +21,5 @@ pub mod hdconfig;
 pub mod path;
 pub mod rpc;
 pub mod service;
+pub mod status;
 mod util;

@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-use crate::fs::{EcSchema, ErasureCodingPolicy};
+use crate::status::{EcSchema, ErasureCodingPolicy};
 
 pub const DUMMY_CODEC_NAME: &str = "dummy";
 pub const RS_CODEC_NAME: &str = "rs";
