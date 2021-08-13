@@ -243,8 +243,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &GetFsReplicatedBlockStatsRequestProto,
     ) -> Result<GetFsReplicatedBlockStatsResponseProto> {
-        self.conn
-            .call("getFsReplicatedBlockStats".into(), args)
+        self.conn.call("getFsReplicatedBlockStats".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -252,8 +251,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &GetFsECBlockGroupStatsRequestProto,
     ) -> Result<GetFsECBlockGroupStatsResponseProto> {
-        self.conn
-            .call("getFsECBlockGroupStats".into(), args)
+        self.conn.call("getFsECBlockGroupStats".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -269,8 +267,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &GetDatanodeStorageReportRequestProto,
     ) -> Result<GetDatanodeStorageReportResponseProto> {
-        self.conn
-            .call("getDatanodeStorageReport".into(), args)
+        self.conn.call("getDatanodeStorageReport".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -359,8 +356,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
     pub fn getFileInfo(&mut self, src: String) -> Result<Option<HdfsFileStatusProto>> {
         let mut args = GetFileInfoRequestProto::new();
         args.set_src(src);
-        let mut res: GetFileInfoResponseProto =
-            self.conn.call("getFileInfo".into(), &args)?;
+        let mut res: GetFileInfoResponseProto = self.conn.call("getFileInfo".into(), &args)?;
         Ok(if res.has_fs() {
             Some(res.take_fs())
         } else {
@@ -492,8 +488,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &UpdateBlockForPipelineRequestProto,
     ) -> Result<UpdateBlockForPipelineResponseProto> {
-        self.conn
-            .call("updateBlockForPipeline".into(), args)
+        self.conn.call("updateBlockForPipeline".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -581,8 +576,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &GetSnapshottableDirListingRequestProto,
     ) -> Result<GetSnapshottableDirListingResponseProto> {
-        self.conn
-            .call("getSnapshottableDirListing".into(), args)
+        self.conn.call("getSnapshottableDirListing".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -614,8 +608,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &GetSnapshotDiffReportListingRequestProto,
     ) -> Result<GetSnapshotDiffReportListingResponseProto> {
-        self.conn
-            .call("getSnapshotDiffReportListing".into(), args)
+        self.conn.call("getSnapshotDiffReportListing".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -720,8 +713,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &ReencryptEncryptionZoneRequestProto,
     ) -> Result<ReencryptEncryptionZoneResponseProto> {
-        self.conn
-            .call("reencryptEncryptionZone".into(), args)
+        self.conn.call("reencryptEncryptionZone".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -729,8 +721,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &ListReencryptionStatusRequestProto,
     ) -> Result<ListReencryptionStatusResponseProto> {
-        self.conn
-            .call("listReencryptionStatus".into(), args)
+        self.conn.call("listReencryptionStatus".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -746,8 +737,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &SetErasureCodingPolicyRequestProto,
     ) -> Result<SetErasureCodingPolicyResponseProto> {
-        self.conn
-            .call("setErasureCodingPolicy".into(), args)
+        self.conn.call("setErasureCodingPolicy".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -755,8 +745,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &UnsetErasureCodingPolicyRequestProto,
     ) -> Result<UnsetErasureCodingPolicyResponseProto> {
-        self.conn
-            .call("unsetErasureCodingPolicy".into(), args)
+        self.conn.call("unsetErasureCodingPolicy".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -789,8 +778,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &GetErasureCodingPoliciesRequestProto,
     ) -> Result<GetErasureCodingPoliciesResponseProto> {
-        self.conn
-            .call("getErasureCodingPolicies".into(), args)
+        self.conn.call("getErasureCodingPolicies".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -798,8 +786,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &AddErasureCodingPoliciesRequestProto,
     ) -> Result<AddErasureCodingPoliciesResponseProto> {
-        self.conn
-            .call("addErasureCodingPolicies".into(), args)
+        self.conn.call("addErasureCodingPolicies".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -807,8 +794,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &RemoveErasureCodingPolicyRequestProto,
     ) -> Result<RemoveErasureCodingPolicyResponseProto> {
-        self.conn
-            .call("removeErasureCodingPolicy".into(), args)
+        self.conn.call("removeErasureCodingPolicy".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -816,8 +802,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &EnableErasureCodingPolicyRequestProto,
     ) -> Result<EnableErasureCodingPolicyResponseProto> {
-        self.conn
-            .call("enableErasureCodingPolicy".into(), args)
+        self.conn.call("enableErasureCodingPolicy".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -825,8 +810,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &DisableErasureCodingPolicyRequestProto,
     ) -> Result<DisableErasureCodingPolicyResponseProto> {
-        self.conn
-            .call("disableErasureCodingPolicy".into(), args)
+        self.conn.call("disableErasureCodingPolicy".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -834,8 +818,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &GetErasureCodingPolicyRequestProto,
     ) -> Result<GetErasureCodingPolicyResponseProto> {
-        self.conn
-            .call("getErasureCodingPolicy".into(), args)
+        self.conn.call("getErasureCodingPolicy".into(), args)
     }
 
     #[allow(non_snake_case)]
@@ -843,8 +826,7 @@ impl<C: rpc::RpcConnection> ClientNamenodeService<C> {
         &mut self,
         args: &GetErasureCodingCodecsRequestProto,
     ) -> Result<GetErasureCodingCodecsResponseProto> {
-        self.conn
-            .call("getErasureCodingCodecs".into(), args)
+        self.conn.call("getErasureCodingCodecs".into(), args)
     }
 
     #[allow(non_snake_case)]
