@@ -8,6 +8,13 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
+    - uses: actions/setup-python@v2
+      with:
+          python-version: '3.x'
+          architecture: 'x64'
+    # Only for ubuntu; see pyo3 repository for an example.
+    - name: Set LD_LIBRARY_PATH
+      run: echo LD_LIBRARY_PATH=${pythonLocation}/lib >> $GITHUB_ENV
     - uses: abelfodil/protoc-action@v1
     - name: Run fmt
       run: cargo fmt -- --check
