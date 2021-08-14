@@ -13,7 +13,10 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-use std::iter::{ExactSizeIterator, FusedIterator};
+use std::{
+    borrow::BorrowMut,
+    iter::{ExactSizeIterator, FusedIterator},
+};
 
 use crate::{
     fs::FsError,
@@ -25,31 +28,34 @@ use protobuf::RepeatedField;
 
 use hdfesse_proto::hdfs::HdfsFileStatusProto;
 
-pub struct LsGroupIterator<'a, R: RpcConnection> {
+pub struct LsGroupIterator<R: RpcConnection, SRef: BorrowMut<ClientNamenodeService<R>>> {
     path_string: String,
     prev_name: Option<Vec<u8>>,
     len: Option<usize>,
     count: usize,
 
-    service: &'a mut ClientNamenodeService<R>,
+    service: SRef,
+    _phantom: std::marker::PhantomData<R>,
 }
 
-impl<'a, R: RpcConnection> LsGroupIterator<'a, R> {
-    pub fn new(service: &'a mut ClientNamenodeService<R>, path: &Path<'_>) -> Self {
+impl<R: RpcConnection, SRef: BorrowMut<ClientNamenodeService<R>>> LsGroupIterator<R, SRef> {
+    pub fn new(service: SRef, path: &Path<'_>) -> Self {
         Self {
             path_string: path.to_path_string(),
             prev_name: Default::default(),
             len: None,
             count: 0,
             service,
+            _phantom: std::marker::PhantomData,
         }
     }
 
     fn next_group(&mut self) -> Result<(usize, RepeatedField<HdfsFileStatusProto>), RpcError> {
         let list_from = self.prev_name.take().unwrap_or_default();
-        let mut listing = self
-            .service
-            .getListing(self.path_string.clone(), list_from, false)?;
+        let mut listing =
+            self.service
+                .borrow_mut()
+                .getListing(self.path_string.clone(), list_from, false)?;
         let partial_list = listing.mut_dirList().take_partialListing();
 
         self.count += partial_list.len();
@@ -70,7 +76,9 @@ impl<'a, R: RpcConnection> LsGroupIterator<'a, R> {
     }
 }
 
-impl<'a, R: RpcConnection> Iterator for LsGroupIterator<'a, R> {
+impl<R: RpcConnection, SRef: BorrowMut<ClientNamenodeService<R>>> Iterator
+    for LsGroupIterator<R, SRef>
+{
     type Item = Result<(usize, RepeatedField<HdfsFileStatusProto>), FsError>;
 
     fn next(&mut self) -> Option<Self::Item> {

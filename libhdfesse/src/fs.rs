@@ -13,7 +13,10 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-use std::{borrow::Cow, fmt::Display};
+use std::{
+    borrow::{BorrowMut, Cow},
+    fmt::Display,
+};
 
 pub use crate::fs_ls::LsGroupIterator;
 use crate::{
@@ -154,18 +157,33 @@ pub struct FsStatus {
     pub pending_deletion_blocks: u64,
 }
 
-pub struct Hdfs<R: RpcConnection = crate::ha_rpc::HaHdfsConnection<crate::rpc::SimpleConnector>> {
-    service: service::ClientNamenodeService<R>,
+pub struct Hdfs<
+    R = crate::ha_rpc::HaHdfsConnection<crate::rpc::SimpleConnector>,
+    SRef = service::ClientNamenodeService<R>,
+> where
+    R: RpcConnection,
+    SRef: BorrowMut<service::ClientNamenodeService<R>>,
+{
+    service: SRef,
     resolve: UriResolver,
+    _phantom: std::marker::PhantomData<R>,
 }
 
-impl<R: RpcConnection> Hdfs<R> {
-    pub fn new(service: service::ClientNamenodeService<R>, resolve: UriResolver) -> Self {
-        Self { service, resolve }
+impl<R, SRef> Hdfs<R, SRef>
+where
+    R: RpcConnection,
+    SRef: BorrowMut<service::ClientNamenodeService<R>>,
+{
+    pub fn new(service: SRef, resolve: UriResolver) -> Self {
+        Self {
+            service,
+            resolve,
+            _phantom: std::marker::PhantomData,
+        }
     }
 
     pub fn get_user(&self) -> &str {
-        self.service.get_user()
+        self.service.borrow().get_user()
     }
 
     pub fn list_status<'s>(
@@ -181,7 +199,7 @@ impl<R: RpcConnection> Hdfs<R> {
         )?;
 
         Ok(
-            LsIterator::new(LsGroupIterator::new(&mut self.service, &src))
+            LsIterator::new(LsGroupIterator::new(self.service.borrow_mut(), &src))
                 .map(|r| r.map_err(HdfsError::op)),
         )
     }
@@ -190,6 +208,7 @@ impl<R: RpcConnection> Hdfs<R> {
         let src = self.resolve.resolve_path(src)?;
 
         self.service
+            .borrow_mut()
             .getFileInfo(src.to_path_string())
             .map_err(FsError::Rpc)?
             .ok_or_else(|| FsError::NotFound(src.to_path_string()))
@@ -202,6 +221,7 @@ impl<R: RpcConnection> Hdfs<R> {
         let dst = self.resolve.resolve_path(dst).map_err(HdfsError::dst)?;
 
         self.service
+            .borrow_mut()
             .rename(src.to_path_string(), dst.to_path_string())
             .map_err(FsError::Rpc)
             .map_err(HdfsError::op)?;
@@ -228,6 +248,7 @@ impl<R: RpcConnection> Hdfs<R> {
         args.set_createParent(create_parent);
         args.set_masked(fs_perm);
         self.service
+            .borrow_mut()
             .mkdirs(&args)
             .map_err(FsError::Rpc)
             .map_err(HdfsError::op)
@@ -246,8 +267,9 @@ impl<R: RpcConnection> Hdfs<R> {
         }
         let mut args = DeleteRequestProto::default();
         args.set_src(path_res.to_path_string());
-        args.set_recursive(recursive);
+        args.borrow_mut().set_recursive(recursive);
         self.service
+            .borrow_mut()
             .delete(&args)
             .map_err(FsError::Rpc)
             .map_err(HdfsError::src)
@@ -256,7 +278,7 @@ impl<R: RpcConnection> Hdfs<R> {
 
     pub fn get_status(&mut self) -> Result<FsStatus, HdfsError> {
         let args = GetFsStatusRequestProto::default();
-        match self.service.getFsStats(&args) {
+        match self.service.borrow_mut().getFsStats(&args) {
             Ok(stats) => Ok(FsStatus {
                 capacity: stats.get_capacity(),
                 used: stats.get_used(),
@@ -301,6 +323,7 @@ impl<R: RpcConnection> Hdfs<R> {
 
         let mut blocks = self
             .service
+            .borrow_mut()
             .getBlockLocations(&args)
             .map_err(FsError::Rpc)
             .map_err(HdfsError::op)?;
@@ -323,6 +346,7 @@ impl<R: RpcConnection> Hdfs<R> {
         args.set_permission(perm);
 
         self.service
+            .borrow_mut()
             .setPermission(&args)
             .map_err(FsError::Rpc)
             .map_err(HdfsError::src)?;
@@ -348,12 +372,15 @@ impl<R: RpcConnection> Hdfs<R> {
         }
 
         self.service
+            .borrow_mut()
             .setTimes(&args)
             .map_err(FsError::Rpc)
             .map_err(HdfsError::src)?;
         Ok(())
     }
+}
 
+impl<R: RpcConnection> Hdfs<R, service::ClientNamenodeService<R>> {
     #[inline]
     pub fn shutdown(self) -> Result<(), HdfsError> {
         self.service
