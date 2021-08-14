@@ -56,7 +56,7 @@ fn main() -> Result<()> {
     let config = get_auto_config(&HDFS_CONFIG);
 
     let default_fs = Path::new(
-        &config
+        config
             .default_fs
             .as_ref()
             .expect("config without defaultFs is not supported; perhaps, config is not found"),
@@ -77,7 +77,7 @@ fn main() -> Result<()> {
         }
     };
     let client =
-        libhdfesse::ha_rpc::HaHdfsConnection::new(&ns, libhdfesse::rpc::SimpleConnector {})?;
+        libhdfesse::ha_rpc::HaHdfsConnection::new(ns, libhdfesse::rpc::SimpleConnector {})?;
 
     let service = libhdfesse::service::ClientNamenodeService::new(client);
     let resolve = UriResolver::new("STUB", service.get_user(), None, None)?;

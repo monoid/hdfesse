@@ -235,7 +235,7 @@ where
         if !create_parent {
             // create_parent also assumes that it is ok if path exists
             ensure_not_exists(
-                self.get_file_info(&src),
+                self.get_file_info(src),
                 src.to_string().into(),
                 HdfsErrorKind::Src,
             )?;

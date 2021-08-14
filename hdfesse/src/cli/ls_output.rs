@@ -419,7 +419,7 @@ impl<W: Write> LineFormat<W> {
             if idx != 0 {
                 write!(out, "\t")?;
             }
-            fmt.print_streaming(out, &entry)?;
+            fmt.print_streaming(out, entry)?;
         }
         writeln!(out)
     }
