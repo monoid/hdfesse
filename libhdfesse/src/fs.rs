@@ -18,9 +18,8 @@ use std::{
     fmt::Display,
 };
 
-pub use crate::fs_ls::LsGroupIterator;
+pub use crate::fs_ls::{LsGroupIterator, LsIterator};
 use crate::{
-    fs_ls::LsIterator,
     path::{Path, PathError, UriResolver},
     rpc::{self, RpcConnection},
     service,
@@ -180,6 +179,14 @@ where
             resolve,
             _phantom: std::marker::PhantomData,
         }
+    }
+
+    pub fn get_inner(&self) -> &service::ClientNamenodeService<R> {
+        self.service.borrow()
+    }
+
+    pub fn get_inner_mut(&mut self) -> &mut service::ClientNamenodeService<R> {
+        self.service.borrow_mut()
     }
 
     pub fn get_user(&self) -> &str {

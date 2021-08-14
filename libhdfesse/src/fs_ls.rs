@@ -90,7 +90,7 @@ impl<R: RpcConnection, SRef: BorrowMut<ClientNamenodeService<R>>> Iterator
     }
 }
 
-pub(crate) struct LsIterator<CI, I, E> {
+pub struct LsIterator<CI, I, E> {
     gi: Option<CI>,
     current: Result<std::vec::IntoIter<I>, E>,
     expected: usize,

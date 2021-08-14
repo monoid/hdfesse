@@ -564,7 +564,9 @@ dependencies = [
 name = "pyhdfesse"
 version = "0.1.0"
 dependencies = [
+ "hdfesse_proto",
  "libhdfesse",
+ "protobuf",
  "pyo3",
  "pyo3-build-config",
 ]

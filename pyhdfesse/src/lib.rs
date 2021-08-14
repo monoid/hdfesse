@@ -1,5 +1,12 @@
+use std::borrow::{Borrow, BorrowMut};
+
+use libhdfesse::ha_rpc::HaHdfsConnection;
+use libhdfesse::rpc::SimpleConnector;
+use libhdfesse::service::ClientNamenodeService;
 use pyo3::create_exception;
 use pyo3::prelude::*;
+
+mod list;
 
 create_exception!(pyhdfesse, HdfsError, pyo3::exceptions::PyException);
 
@@ -38,6 +45,18 @@ impl Hdfs {
         Ok(Hdfs {
             nested: libhdfesse::fs::Hdfs::new(service, resolve),
         })
+    }
+}
+
+impl Borrow<ClientNamenodeService<HaHdfsConnection<SimpleConnector>>> for Hdfs {
+    fn borrow(&self) -> &ClientNamenodeService<HaHdfsConnection<SimpleConnector>> {
+        self.nested.get_inner()
+    }
+}
+
+impl BorrowMut<ClientNamenodeService<HaHdfsConnection<SimpleConnector>>> for Hdfs {
+    fn borrow_mut(&mut self) -> &mut ClientNamenodeService<HaHdfsConnection<SimpleConnector>> {
+        self.nested.get_inner_mut()
     }
 }
 
