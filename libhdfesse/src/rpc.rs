@@ -186,7 +186,7 @@ pub struct HdfsConnection {
 impl HdfsConnection {
     pub fn new_from_path<C: Connector, Cfg: Deref<Target = hdconfig::Config>>(
         config: Cfg,
-        path: Path,
+        path: Path<'_>,
         connector: &C,
     ) -> Result<Self, RpcError> {
         let host = path.host().expect("TODO: expected host");
@@ -273,7 +273,7 @@ impl HdfsConnection {
 
     #[instrument(skip(cos))]
     fn send_message_group(
-        cos: &mut CodedOutputStream,
+        cos: &mut CodedOutputStream<'_>,
         messages: &[&dyn Message],
     ) -> Result<(), RpcError> {
         let header_len: u32 = messages

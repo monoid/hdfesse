@@ -216,7 +216,7 @@ where
 
     // TODO a sketch; one should check that dst exists or doesn't
     // exist and srcs do exist, etc.
-    pub fn rename(&mut self, src: &Path, dst: &Path<'_>) -> Result<(), HdfsError> {
+    pub fn rename(&mut self, src: &Path<'_>, dst: &Path<'_>) -> Result<(), HdfsError> {
         let src = self.resolve.resolve_path(src).map_err(HdfsError::src)?;
         let dst = self.resolve.resolve_path(dst).map_err(HdfsError::dst)?;
 
@@ -229,7 +229,7 @@ where
     }
 
     // Almost functional implementation, requires some polishing.
-    pub fn mkdirs(&mut self, src: &Path, create_parent: bool) -> Result<bool, HdfsError> {
+    pub fn mkdirs(&mut self, src: &Path<'_>, create_parent: bool) -> Result<bool, HdfsError> {
         let src_res = self.resolve.resolve_path(src).map_err(HdfsError::src)?;
 
         if !create_parent {
@@ -256,7 +256,7 @@ where
     }
 
     /// Delete path
-    pub fn delete(&mut self, path: &Path, recursive: bool) -> Result<bool, HdfsError> {
+    pub fn delete(&mut self, path: &Path<'_>, recursive: bool) -> Result<bool, HdfsError> {
         let path_res = self.resolve.resolve_path(path).map_err(HdfsError::src)?;
         if !recursive {
             ensure_not_dir(
@@ -335,7 +335,7 @@ where
             .collect())
     }
 
-    pub fn chmod(&mut self, path: &Path, chmod: u32) -> Result<(), HdfsError> {
+    pub fn chmod(&mut self, path: &Path<'_>, chmod: u32) -> Result<(), HdfsError> {
         let path_res = self.resolve.resolve_path(path).map_err(HdfsError::src)?;
 
         let mut perm = FsPermissionProto::default();
@@ -355,7 +355,7 @@ where
 
     pub fn set_time(
         &mut self,
-        path: &Path,
+        path: &Path<'_>,
         mtime: Option<u64>,
         atime: Option<u64>,
     ) -> Result<(), HdfsError> {

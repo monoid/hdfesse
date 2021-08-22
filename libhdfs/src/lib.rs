@@ -13,6 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
+#![warn(rust_2018_idioms)]
 #![allow(non_snake_case)]
 #![allow(non_camel_case_types)]
 mod errors;

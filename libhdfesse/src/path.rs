@@ -45,7 +45,7 @@ pub enum PathError {
     PartError(URIReferenceError),
 }
 
-fn drop_empty_segments(mut path: uriparse::Path) -> uriparse::Path {
+fn drop_empty_segments(mut path: uriparse::Path<'_>) -> uriparse::Path<'_> {
     path.normalize(true);
     if (path.segments().len() > 1) & path.segments().iter().any(|seg| seg.is_empty()) {
         let mut new_path = uriparse::Path::try_from("").unwrap(); // Well...  I do not expect it to fail.
@@ -219,7 +219,7 @@ impl UriResolver {
 
     pub fn resolve<'a>(&self, path: &Path<'a>) -> Result<Path<'a>, PathError> {
         let uri = &path.path;
-        let mut res: URIReference = self.default_uri.clone().into();
+        let mut res: URIReference<'_> = self.default_uri.clone().into();
         if uri.is_relative_path_reference() {
             let mut res_path = res.path().clone();
             for part in uri.path().segments() {

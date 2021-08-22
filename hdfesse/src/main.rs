@@ -13,6 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
+#![warn(rust_2018_idioms)]
 mod cli;
 use anyhow::Result;
 use cli::Command;
