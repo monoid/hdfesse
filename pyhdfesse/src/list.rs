@@ -1,4 +1,5 @@
 use hdfesse_proto::hdfs::HdfsFileStatusProto;
+use libhdfesse::fs::HdfsError;
 use libhdfesse::{fs::FsError, ha_rpc::HaHdfsConnection, rpc::SimpleConnector};
 use pyo3::class::iter::IterNextOutput;
 use pyo3::{prelude::*, PyIterProtocol};
@@ -33,11 +34,7 @@ impl From<HdfsFileStatusProto> for FileInfo {
 
 #[pyclass]
 pub(crate) struct LsIterator {
-    it: libhdfesse::fs::LsIterator<
-        libhdfesse::fs::LsGroupIterator<HaHdfsConnection<SimpleConnector>, crate::Hdfs>,
-        HdfsFileStatusProto,
-        FsError,
-    >,
+    it: Box<dyn Iterator<Item=Result<HdfsFileStatusProto, HdfsError>> + Send + Sync + 'static>,
 }
 
 #[pyproto]

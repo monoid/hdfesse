@@ -19,12 +19,7 @@ use std::{
 };
 
 pub use crate::fs_ls::{LsGroupIterator, LsIterator};
-use crate::{
-    path::{Path, PathError, UriResolver},
-    rpc::{self, RpcConnection},
-    service,
-    status::LocatedBlock,
-};
+use crate::{holder::{Holder, Owned}, path::{Path, PathError, UriResolver}, rpc::{self, RpcConnection}, service, status::LocatedBlock};
 pub use hdfesse_proto::hdfs::ErasureCodingPolicyState;
 use hdfesse_proto::{
     acl::FsPermissionProto,
@@ -157,21 +152,22 @@ pub struct FsStatus {
 }
 
 pub struct Hdfs<
+    'a,
     R = crate::ha_rpc::HaHdfsConnection<crate::rpc::SimpleConnector>,
-    SRef = service::ClientNamenodeService<R>,
+    SRef = Owned<service::ClientNamenodeService<R>>,
 > where
     R: RpcConnection,
-    SRef: BorrowMut<service::ClientNamenodeService<R>>,
+    SRef: Holder<'a, service::ClientNamenodeService<R>>,
 {
     service: SRef,
     resolve: UriResolver,
-    _phantom: std::marker::PhantomData<R>,
+    _phantom: std::marker::PhantomData<&'a R>,
 }
 
-impl<R, SRef> Hdfs<R, SRef>
+impl<'a, R, SRef> Hdfs<'a, R, SRef>
 where
     R: RpcConnection,
-    SRef: BorrowMut<service::ClientNamenodeService<R>>,
+    SRef: Holder<'a, service::ClientNamenodeService<R>>,
 {
     pub fn new(service: SRef, resolve: UriResolver) -> Self {
         Self {
@@ -181,22 +177,18 @@ where
         }
     }
 
-    pub fn get_inner(&self) -> &service::ClientNamenodeService<R> {
-        self.service.borrow()
+    pub fn get_inner_mut(&'a self) -> SRef::Guard {
+        self.service.aquire()
     }
 
-    pub fn get_inner_mut(&mut self) -> &mut service::ClientNamenodeService<R> {
-        self.service.borrow_mut()
+    pub fn get_user(&'a self) -> &str {
+        self.service.aquire().get_user()
     }
 
-    pub fn get_user(&self) -> &str {
-        self.service.borrow().get_user()
-    }
-
-    pub fn list_status<'s>(
-        &'s mut self,
+    pub fn list_status(
+        &'a mut self,
         src: &Path<'_>,
-    ) -> Result<impl Iterator<Item = Result<HdfsFileStatusProto, HdfsError>> + 's, HdfsError> {
+    ) -> Result<impl Iterator<Item = Result<HdfsFileStatusProto, HdfsError>> + 'a, HdfsError> {
         let src = self.resolve.resolve_path(src).map_err(HdfsError::src)?;
 
         ensure_dir(
@@ -206,16 +198,16 @@ where
         )?;
 
         Ok(
-            LsIterator::new(LsGroupIterator::new(self.service.borrow_mut(), &src))
+            LsIterator::new(LsGroupIterator::<R>::new(self.service.aquire(), &src))
                 .map(|r| r.map_err(HdfsError::op)),
         )
     }
 
-    pub fn get_file_info(&mut self, src: &Path<'_>) -> Result<HdfsFileStatusProto, FsError> {
+    pub fn get_file_info(&'a mut self, src: &Path<'_>) -> Result<HdfsFileStatusProto, FsError> {
         let src = self.resolve.resolve_path(src)?;
 
         self.service
-            .borrow_mut()
+            .aquire()
             .getFileInfo(src.to_path_string())
             .map_err(FsError::Rpc)?
             .ok_or_else(|| FsError::NotFound(src.to_path_string()))
@@ -223,12 +215,12 @@ where
 
     // TODO a sketch; one should check that dst exists or doesn't
     // exist and srcs do exist, etc.
-    pub fn rename(&mut self, src: &Path<'_>, dst: &Path<'_>) -> Result<(), HdfsError> {
+    pub fn rename(&'a mut self, src: &Path<'_>, dst: &Path<'_>) -> Result<(), HdfsError> {
         let src = self.resolve.resolve_path(src).map_err(HdfsError::src)?;
         let dst = self.resolve.resolve_path(dst).map_err(HdfsError::dst)?;
 
         self.service
-            .borrow_mut()
+            .aquire()
             .rename(src.to_path_string(), dst.to_path_string())
             .map_err(FsError::Rpc)
             .map_err(HdfsError::op)?;
@@ -236,7 +228,7 @@ where
     }
 
     // Almost functional implementation, requires some polishing.
-    pub fn mkdirs(&mut self, src: &Path<'_>, create_parent: bool) -> Result<bool, HdfsError> {
+    pub fn mkdirs(&'a mut self, src: &Path<'_>, create_parent: bool) -> Result<bool, HdfsError> {
         let src_res = self.resolve.resolve_path(src).map_err(HdfsError::src)?;
 
         if !create_parent {
@@ -255,7 +247,7 @@ where
         args.set_createParent(create_parent);
         args.set_masked(fs_perm);
         self.service
-            .borrow_mut()
+            .aquire()
             .mkdirs(&args)
             .map_err(FsError::Rpc)
             .map_err(HdfsError::op)
@@ -263,7 +255,7 @@ where
     }
 
     /// Delete path
-    pub fn delete(&mut self, path: &Path<'_>, recursive: bool) -> Result<bool, HdfsError> {
+    pub fn delete(&'a mut self, path: &Path<'_>, recursive: bool) -> Result<bool, HdfsError> {
         let path_res = self.resolve.resolve_path(path).map_err(HdfsError::src)?;
         if !recursive {
             ensure_not_dir(
@@ -276,16 +268,16 @@ where
         args.set_src(path_res.to_path_string());
         args.borrow_mut().set_recursive(recursive);
         self.service
-            .borrow_mut()
+            .aquire()
             .delete(&args)
             .map_err(FsError::Rpc)
             .map_err(HdfsError::src)
             .map(|resp| resp.get_result())
     }
 
-    pub fn get_status(&mut self) -> Result<FsStatus, HdfsError> {
+    pub fn get_status(&'a mut self) -> Result<FsStatus, HdfsError> {
         let args = GetFsStatusRequestProto::default();
-        match self.service.borrow_mut().getFsStats(&args) {
+        match self.service.aquire().getFsStats(&args) {
             Ok(stats) => Ok(FsStatus {
                 capacity: stats.get_capacity(),
                 used: stats.get_used(),
@@ -306,7 +298,7 @@ where
     // vector and move data like strings into it.  See hadoop's
     // DFSUtilClient.locatedBlocks2Locations.
     pub fn get_file_block_locations(
-        &mut self,
+        &'a mut self,
         file_status: &HdfsFileStatusProto,
         length: u64,
         offset: u64,
@@ -330,7 +322,7 @@ where
 
         let mut blocks = self
             .service
-            .borrow_mut()
+            .aquire()
             .getBlockLocations(&args)
             .map_err(FsError::Rpc)
             .map_err(HdfsError::op)?;
@@ -342,7 +334,7 @@ where
             .collect())
     }
 
-    pub fn chmod(&mut self, path: &Path<'_>, chmod: u32) -> Result<(), HdfsError> {
+    pub fn chmod(&'a mut self, path: &Path<'_>, chmod: u32) -> Result<(), HdfsError> {
         let path_res = self.resolve.resolve_path(path).map_err(HdfsError::src)?;
 
         let mut perm = FsPermissionProto::default();
@@ -353,7 +345,7 @@ where
         args.set_permission(perm);
 
         self.service
-            .borrow_mut()
+            .aquire()
             .setPermission(&args)
             .map_err(FsError::Rpc)
             .map_err(HdfsError::src)?;
@@ -361,7 +353,7 @@ where
     }
 
     pub fn set_time(
-        &mut self,
+        &'a mut self,
         path: &Path<'_>,
         mtime: Option<u64>,
         atime: Option<u64>,
@@ -379,7 +371,7 @@ where
         }
 
         self.service
-            .borrow_mut()
+            .aquire()
             .setTimes(&args)
             .map_err(FsError::Rpc)
             .map_err(HdfsError::src)?;
@@ -387,10 +379,11 @@ where
     }
 }
 
-impl<R: RpcConnection> Hdfs<R, service::ClientNamenodeService<R>> {
+impl<'a, R: RpcConnection> Hdfs<'a, R, Owned<service::ClientNamenodeService<R>>> {
     #[inline]
     pub fn shutdown(self) -> Result<(), HdfsError> {
         self.service
+            .into_inner()
             .shutdown()
             .map_err(FsError::Rpc)
             .map_err(HdfsError::op)

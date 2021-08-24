@@ -1,10 +1,12 @@
 use std::borrow::{Borrow, BorrowMut};
+use std::ops::DerefMut;
 
 use libhdfesse::ha_rpc::HaHdfsConnection;
 use libhdfesse::rpc::SimpleConnector;
 use libhdfesse::service::ClientNamenodeService;
 use pyo3::create_exception;
 use pyo3::prelude::*;
+use reffers;
 
 mod list;
 
@@ -12,7 +14,7 @@ create_exception!(pyhdfesse, HdfsError, pyo3::exceptions::PyException);
 
 #[pyclass]
 struct Hdfs {
-    nested: libhdfesse::fs::Hdfs,
+    nested: reffers::arc::Strong<libhdfesse::fs::Hdfs>,
 }
 
 impl Hdfs {
@@ -43,7 +45,7 @@ impl Hdfs {
         let service = libhdfesse::service::ClientNamenodeService::new(client);
         let resolve = libhdfesse::path::UriResolver::new("STUB", service.get_user(), None, None)?;
         Ok(Hdfs {
-            nested: libhdfesse::fs::Hdfs::new(service, resolve),
+            nested: Arc::new(Mutex::new(libhdfesse::fs::Hdfs::new(service, resolve))),
         })
     }
 }
@@ -65,6 +67,13 @@ impl Hdfs {
     #[new]
     fn new() -> PyResult<Self> {
         Self::create_default().map_err(|e| HdfsError::new_err(e.to_string()))
+    }
+
+    fn list_status(self_: PyRefMut<Self>, path: &str) -> PyResult<crate::list::LsIterator> {
+        let path = libhdfesse::path::Path::new(path).map_err(|e| crate::HdfsError::new_err(e.to_string()))?;
+        Ok(crate::list::LsIterator {
+            it: Box::new(self_.deref_mut().nested.list_status(&path).unwrap()),
+        })
     }
 }
 

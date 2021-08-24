@@ -20,6 +20,7 @@ use std::{
 
 use crate::{
     fs::FsError,
+    holder::Holder,
     path::Path,
     rpc::{RpcConnection, RpcError},
     service::ClientNamenodeService,
@@ -28,18 +29,18 @@ use protobuf::RepeatedField;
 
 use hdfesse_proto::hdfs::HdfsFileStatusProto;
 
-pub struct LsGroupIterator<R: RpcConnection, SRef: BorrowMut<ClientNamenodeService<R>>> {
+pub struct LsGroupIterator<'a, R: RpcConnection, SRef: Holder<'a, ClientNamenodeService<R>>> {
     path_string: String,
     prev_name: Option<Vec<u8>>,
     len: Option<usize>,
     count: usize,
 
-    service: SRef,
-    _phantom: std::marker::PhantomData<R>,
+    service: SRef::Guard,
+    _phantom: std::marker::PhantomData<&'a R>,
 }
 
-impl<R: RpcConnection, SRef: BorrowMut<ClientNamenodeService<R>>> LsGroupIterator<R, SRef> {
-    pub fn new(service: SRef, path: &Path<'_>) -> Self {
+impl<'a, R: RpcConnection, SRef: Holder<'a, ClientNamenodeService<R>>> LsGroupIterator<'a, R, SRef> {
+    pub fn new(service: SRef::Guard, path: &Path<'_>) -> Self {
         Self {
             path_string: path.to_path_string(),
             prev_name: Default::default(),
@@ -50,10 +51,11 @@ impl<R: RpcConnection, SRef: BorrowMut<ClientNamenodeService<R>>> LsGroupIterato
         }
     }
 
-    fn next_group(&mut self) -> Result<(usize, RepeatedField<HdfsFileStatusProto>), RpcError> {
+    fn next_group(&'a mut self) -> Result<(usize, RepeatedField<HdfsFileStatusProto>), RpcError> {
         let list_from = self.prev_name.take().unwrap_or_default();
         let mut listing =
             self.service
+                .aquire()
                 .borrow_mut()
                 .getListing(self.path_string.clone(), list_from, false)?;
         let partial_list = listing.mut_dirList().take_partialListing();
@@ -76,8 +78,8 @@ impl<R: RpcConnection, SRef: BorrowMut<ClientNamenodeService<R>>> LsGroupIterato
     }
 }
 
-impl<R: RpcConnection, SRef: BorrowMut<ClientNamenodeService<R>>> Iterator
-    for LsGroupIterator<R, SRef>
+impl<'a, R: RpcConnection, SRef: Holder<'a, ClientNamenodeService<R>>> Iterator
+    for LsGroupIterator<'a, R, SRef>
 {
     type Item = Result<(usize, RepeatedField<HdfsFileStatusProto>), FsError>;
 

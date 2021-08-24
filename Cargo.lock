@@ -302,6 +302,7 @@ dependencies = [
  "percent-encoding",
  "phf",
  "protobuf",
+ "reffers",
  "serde",
  "thiserror",
  "tracing",
@@ -569,6 +570,7 @@ dependencies = [
  "protobuf",
  "pyo3",
  "pyo3-build-config",
+ "reffers",
 ]
 
 [[package]]
@@ -729,6 +731,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "reffers"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "20b08f8f2aada5c4435926c63a9e4318f1ca843cc1e0e0ece1a3f40c65ba7b77"
+dependencies = [
+ "stable_deref_trait",
+]
+
+[[package]]
 name = "regex"
 version = "1.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -827,6 +838,12 @@ name = "smallvec"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fe0f37c9e8f3c5a4a66ad655a93c74daac4ad00c441533bf5c6e7990bb42604e"
+
+[[package]]
+name = "stable_deref_trait"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 
 [[package]]
 name = "strsim"

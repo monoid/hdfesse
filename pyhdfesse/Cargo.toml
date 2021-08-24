@@ -15,6 +15,7 @@ crate-type = ["cdylib"]
 libhdfesse = { path = "../libhdfesse" }
 hdfesse_proto = { path = "../hdfesse_proto" }
 protobuf = "2"
+reffers = "0.6.0"
 
 [dependencies.pyo3]
 version = "0.14.2"

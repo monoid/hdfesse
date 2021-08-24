@@ -18,6 +18,7 @@ pub mod erasure;
 pub mod fs;
 mod fs_ls;
 pub mod ha_rpc;
+pub mod holder;
 pub mod hdconfig;
 pub mod path;
 pub mod rpc;
