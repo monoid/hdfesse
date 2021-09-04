@@ -20,6 +20,7 @@ mod fs_ls;
 pub mod ha_rpc;
 pub mod hdconfig;
 pub mod path;
+mod reader;
 pub mod rpc;
 pub mod service;
 pub mod status;
