@@ -8,6 +8,7 @@ edition = "2018"
 
 [features]
 serde_support = ["serde"]
+integration_test = []
 
 [dependencies]
 hdfesse_proto = { path = "../hdfesse_proto" }

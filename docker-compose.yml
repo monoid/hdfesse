@@ -1,0 +1,16 @@
+version: "3.2"
+services:
+  hadoop:
+    image: sequenceiq/hadoop
+    expose:
+      - "9000"
+      - "8040"
+  test:
+    build: docker/
+    command: /bin/bash -c 'cp -rv /src /build && cd /build && rm -rf ./target && cargo build --features integration_test && cargo test --features integration_test'
+    environment:
+      LOGNAME: root
+    links:
+      - hadoop
+    volumes:
+      - .:/src
