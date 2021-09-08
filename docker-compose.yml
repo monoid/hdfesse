@@ -1,7 +1,7 @@
 version: "3.2"
 services:
   hadoop:
-    image: sequenceiq/hadoop
+    image: sequenceiq/hadoop-docker
     expose:
       - "9000"
       - "8040"
