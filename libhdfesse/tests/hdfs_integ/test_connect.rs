@@ -18,7 +18,7 @@ fn test_connect() -> Result<(), Box<dyn std::error::Error>> {
         config
             .default_fs
             .as_ref()
-            .expect("config without defaultFs is not supported; perhaps, config is not found"),
+            .expect("config without defaultFS is not supported; perhaps, config is not found"),
     )?;
 
     let dfs = default_fs
