@@ -1,5 +1,5 @@
 use libhdfesse::{
-    hdconfig::{get_auto_config, HDFS_CONFIG, Config},
+    hdconfig::{get_auto_config, Config, HDFS_CONFIG},
     path::{Path, UriResolver},
 };
 
