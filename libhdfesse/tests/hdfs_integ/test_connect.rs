@@ -1,16 +1,12 @@
-#[cfg(feature = "integration_test")]
 use libhdfesse::{
     hdconfig::{Config, NamenodeConfig, NameserviceConfig},
     path::{Path, UriResolver},
 };
 
-#[cfg(feature = "integration_test")]
 const HADOOP_HOST: &str = "hadoop";
-#[cfg(feature = "integration_test")]
 const HADOOP_DEFAULT: &str = "default2";
 
 // standard testing config
-#[cfg(feature = "integration_test")]
 fn get_config() -> Config {
     Config {
         default_fs: Some(format!("hdfs://{}", HADOOP_DEFAULT).into()),
@@ -25,7 +21,6 @@ fn get_config() -> Config {
     }
 }
 
-#[cfg(feature = "integration_test")]
 #[test]
 fn test_connect() -> Result<(), Box<dyn std::error::Error>> {
     let config = get_config();
