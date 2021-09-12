@@ -1,19 +1,15 @@
 use libhdfesse::{
-    hdconfig::{get_auto_config, Config, HDFS_CONFIG},
+    hdconfig::Config,
     path::{Path, UriResolver},
 };
 
 const HADOOP_HOST: &str = "hadoop";
 const HADOOP_DEFAULT: &str = "default2";
 
-// standard testing config
-fn get_config() -> Config {
-    get_auto_config(&HDFS_CONFIG)
-}
 
 #[test]
 fn test_connect() -> Result<(), Box<dyn std::error::Error>> {
-    let config = get_config();
+    let config = Config::auto();
     let default_fs = Path::new(
         config
             .default_fs

@@ -17,7 +17,7 @@
 mod cli;
 use anyhow::Result;
 use cli::Command;
-use libhdfesse::hdconfig::{get_auto_config, HDFS_CONFIG};
+use libhdfesse::hdconfig::Config;
 use libhdfesse::path::{Path, UriResolver};
 use structopt::StructOpt;
 use tracing_subscriber::layer::SubscriberExt;
@@ -54,7 +54,7 @@ fn main() -> Result<()> {
 
     let opt = HdfessseApp::from_args();
 
-    let config = get_auto_config(&HDFS_CONFIG);
+    let config = Config::auto();
 
     let default_fs = Path::new(
         config

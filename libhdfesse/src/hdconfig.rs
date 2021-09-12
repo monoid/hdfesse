@@ -298,6 +298,12 @@ pub struct Config {
     pub services: Vec<NameserviceConfig>,
 }
 
+impl Config {
+    pub fn auto() -> Self {
+        get_auto_config(&HDFS_CONFIG)
+    }
+}
+
 /// Get useful data as a config object.
 pub fn parse_config(conf: &ConfigMap) -> Config {
     let mut services = vec![];
