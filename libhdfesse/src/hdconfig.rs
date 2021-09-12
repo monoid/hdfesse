@@ -282,10 +282,13 @@ fn parse_namenode(conf: &ConfigMap, namenode: &str, nameservice: &str) -> Option
     let rpc = conf.get(rpc_key.as_str());
     let servicerpc = conf.get(servicerpc_key.as_str());
 
-    rpc.zip(servicerpc).map(|(rpc, servicercp)| NamenodeConfig {
-        name: namenode.into(),
-        rpc_address: rpc.deref().into(),
-        servicerpc_address: servicercp.deref().into(),
+    rpc.map(|rpc| {
+        let servicerpc = servicerpc.unwrap_or_else(|| rpc);
+        NamenodeConfig {
+            name: namenode.into(),
+            rpc_address: rpc.deref().into(),
+            servicerpc_address: servicerpc.deref().into(),
+        }
     })
 }
 
