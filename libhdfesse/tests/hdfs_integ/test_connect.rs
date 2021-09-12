@@ -1,5 +1,5 @@
 use libhdfesse::{
-    hdconfig::{Config, NamenodeConfig, NameserviceConfig},
+    hdconfig::{get_auto_config, HDFS_CONFIG, Config},
     path::{Path, UriResolver},
 };
 
@@ -8,17 +8,7 @@ const HADOOP_DEFAULT: &str = "default2";
 
 // standard testing config
 fn get_config() -> Config {
-    Config {
-        default_fs: Some(format!("hdfs://{}", HADOOP_DEFAULT).into()),
-        services: vec![NameserviceConfig {
-            name: HADOOP_DEFAULT.into(),
-            rpc_nodes: vec![NamenodeConfig {
-                name: HADOOP_HOST.into(),
-                rpc_address: format!("{}:9000", HADOOP_HOST).into(),
-                servicerpc_address: format!("{}:8040", HADOOP_HOST).into(),
-            }],
-        }],
-    }
+    get_auto_config(&HDFS_CONFIG)
 }
 
 #[test]
