@@ -6,7 +6,6 @@ use libhdfesse::{
 const HADOOP_HOST: &str = "hadoop";
 const HADOOP_DEFAULT: &str = "default2";
 
-
 #[test]
 fn test_connect() -> Result<(), Box<dyn std::error::Error>> {
     let config = Config::auto();
