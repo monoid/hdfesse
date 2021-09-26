@@ -283,7 +283,7 @@ fn parse_namenode(conf: &ConfigMap, namenode: &str, nameservice: &str) -> Option
     let servicerpc = conf.get(servicerpc_key.as_str());
 
     rpc.map(|rpc| {
-        let servicerpc = servicerpc.unwrap_or_else(|| rpc);
+        let servicerpc = servicerpc.unwrap_or(rpc);
         NamenodeConfig {
             name: namenode.into(),
             rpc_address: rpc.deref().into(),
@@ -292,6 +292,7 @@ fn parse_namenode(conf: &ConfigMap, namenode: &str, nameservice: &str) -> Option
     })
 }
 
+#[derive(Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde_support", derive(Deserialize, Serialize))]
 pub struct Config {
     pub default_fs: Option<Box<str>>,
@@ -324,7 +325,7 @@ pub fn parse_config(conf: &ConfigMap) -> Config {
             // We simply ignore incorrect addresses.
             rpc_nodes: namenodes
                 .split(',')
-                .flat_map(|namenode| parse_namenode(conf, namenode, name))
+                .filter_map(|namenode| parse_namenode(conf, namenode, name))
                 .collect(),
         };
         services.push(serv);
