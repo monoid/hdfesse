@@ -288,7 +288,7 @@ impl UriResolver {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Hash)]
 pub struct Path<'a> {
     path: URIReference<'a>,
 }
