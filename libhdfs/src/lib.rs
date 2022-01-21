@@ -734,11 +734,13 @@ impl hdfsFileInfo {
     // We cannot implement Drop for a repr(C) struct; use a manual one.
     // Technically, it doesn't need to be &mut, but it is.
     unsafe fn free(&mut self) {
-        CString::from_raw(self.mName);
+        // Just to deallocate.
+        let _ = CString::from_raw(self.mName);
         // mOwner is different as it contains some kludgy extra data
         // and allocated with malloc.
         libc::free(self.mOwner as _);
-        CString::from_raw(self.mGroup);
+        // Just to deallocate.
+        let _ = CString::from_raw(self.mGroup);
     }
 }
 
