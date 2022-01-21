@@ -123,13 +123,8 @@ pub(crate) trait FieldFormatter<W: Write> {
     fn print_streaming(&self, out: &mut W, rec: &Record) -> std::io::Result<()>;
 }
 
+#[derive(Default)]
 struct PermFormatter {}
-
-impl Default for PermFormatter {
-    fn default() -> Self {
-        Self {}
-    }
-}
 
 impl<W: Write> FieldFormatter<W> for PermFormatter {
     fn update_len(&mut self, _rec: &Record) {
@@ -187,13 +182,8 @@ impl<W: Write> FieldFormatter<W> for ReplicationFormatter {
     }
 }
 
+#[derive(Default)]
 struct SimpleSizeFormatter {}
-
-impl Default for SimpleSizeFormatter {
-    fn default() -> Self {
-        Self {}
-    }
-}
 
 impl<W: Write> FieldFormatter<W> for SimpleSizeFormatter {
     fn update_len(&mut self, _entry: &Record) {}
@@ -240,6 +230,7 @@ impl<W: Write> FieldFormatter<W> for HumanSizeFormatter {
     }
 }
 
+#[derive(Default)]
 struct DateFormatter {
     max_len: usize,
 }
@@ -257,12 +248,6 @@ impl DateFormatter {
     }
 }
 
-impl Default for DateFormatter {
-    fn default() -> Self {
-        Self { max_len: 0 }
-    }
-}
-
 impl<W: Write> FieldFormatter<W> for DateFormatter {
     fn update_len(&mut self, entry: &Record) {
         self.max_len = max(self.max_len, entry.timestmap_str.chars().count());
@@ -277,14 +262,9 @@ impl<W: Write> FieldFormatter<W> for DateFormatter {
     }
 }
 
+#[derive(Default)]
 struct OwnerFormatter {
     max_len: usize,
-}
-
-impl Default for OwnerFormatter {
-    fn default() -> Self {
-        Self { max_len: 0 }
-    }
 }
 
 impl<W: Write> FieldFormatter<W> for OwnerFormatter {
@@ -301,14 +281,9 @@ impl<W: Write> FieldFormatter<W> for OwnerFormatter {
     }
 }
 
+#[derive(Default)]
 struct GroupFormatter {
     max_len: usize,
-}
-
-impl Default for GroupFormatter {
-    fn default() -> Self {
-        Self { max_len: 0 }
-    }
 }
 
 impl<W: Write> FieldFormatter<W> for GroupFormatter {
