@@ -7,7 +7,7 @@ services:
       - "8040"
   test:
     build: docker/
-    command: /bin/bash -c 'cp -rv /src /build && cd /build && rm -rf ./target && cargo build --cfg integration_test && cargo test --cfg integration_test'
+    command: /bin/bash -c 'cp -rv /src /build && cd /build && rm -rf ./target && cargo build --features integration_test && cargo test --features integration_test'
     environment:
       LOGNAME: root
     links:
