@@ -13,6 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
+#![forbid(unsafe_code)]
 #![warn(rust_2018_idioms)]
 pub mod erasure;
 pub mod fs;
