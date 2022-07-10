@@ -20,6 +20,6 @@ This project is in its early stage and is not yet functional.
 
 ## Features
 
-  + `serde_support` for `libhdfesse`: Serde serialize/deserialize for HA config
+  + `serde` for `libhdfesse`: Serde serialize/deserialize for HA config
     structs.  So, you may load the Config from Hadoop configs, or deserialize
     it from your own data.
