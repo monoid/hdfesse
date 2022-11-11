@@ -285,7 +285,7 @@ bld is a valid pointer returned from hdfsBuilder() function.
 */
 #[no_mangle]
 pub unsafe extern "C" fn hdfsFreeBuilder(bld: *mut hdfsBuilder) {
-    Box::from_raw(bld);
+    std::mem::drop(Box::from_raw(bld));
 }
 
 /**

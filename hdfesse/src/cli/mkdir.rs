@@ -70,6 +70,6 @@ impl<'a> Command for Mkdir<'a> {
             }
         }
 
-        Ok(if has_error { 1 } else { 0 })
+        Ok(i32::from(has_error))
     }
 }

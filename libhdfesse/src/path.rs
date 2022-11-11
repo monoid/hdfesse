@@ -374,7 +374,7 @@ impl<'a> Path<'a> {
         self.path.username().map(
             // TODO encode or decode?
             |user| {
-                percent_encoding::percent_decode_str(&user.to_string())
+                percent_encoding::percent_decode_str(user)
                     .decode_utf8()
                     .unwrap()
                     .to_string()

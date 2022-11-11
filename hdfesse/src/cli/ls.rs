@@ -237,6 +237,6 @@ impl<'a> Command for Ls<'a> {
                 eprintln!("{}", e);
             }
         }
-        Ok(if has_err { 1 } else { 0 })
+        Ok(i32::from(has_err))
     }
 }

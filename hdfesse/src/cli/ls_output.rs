@@ -361,16 +361,16 @@ impl<W: Write> LineFormat<W> {
     pub(crate) fn full(base: path::Path<'_>, human: bool, quote: bool) -> Self {
         Self {
             formatters: vec![
-                Box::new(PermFormatter::default()),
-                Box::new(ReplicationFormatter::default()),
-                Box::new(OwnerFormatter::default()),
-                Box::new(GroupFormatter::default()),
+                Box::<PermFormatter>::default(),
+                Box::<ReplicationFormatter>::default(),
+                Box::<OwnerFormatter>::default(),
+                Box::<GroupFormatter>::default(),
                 if human {
-                    Box::new(HumanSizeFormatter::default())
+                    Box::<HumanSizeFormatter>::default()
                 } else {
-                    Box::new(SimpleSizeFormatter::default())
+                    Box::<SimpleSizeFormatter>::default()
                 },
-                Box::new(DateFormatter::default()),
+                Box::<DateFormatter>::default(),
                 Box::new(NameFormatter::new(base, quote)),
             ],
         }
